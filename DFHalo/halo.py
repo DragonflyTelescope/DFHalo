@@ -17,9 +17,8 @@ from astropy.coordinates import SkyCoord
 from astropy.stats import sigma_clip
 from astropy.utils.exceptions import AstropyUserWarning
     
-from elderflower.utils import Intensity2SB
-from elderflower.atlas import query_atlas
-from elderflower.image import Thumb_Image
+from .utils import Intensity2SB, Thumb_Image
+from .atlas import query_atlas
 
 def query_atlas_catalog(ra_range, 
                         dec_range,

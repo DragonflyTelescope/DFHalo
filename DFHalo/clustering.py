@@ -10,6 +10,23 @@ from .plot import plot_profile_clustering
 def clustering_profiles(r_norms, filters, contrasts, 
                         save_dir='.', field=''):
     
+    """
+    Parameters
+    ----------
+    
+    r_norms: 3d np.array
+        Curves of Growth (axis 0: frame, axis 1: star, axis 3: radius)
+    filters: str np.array
+        Filters of frames
+    contrasts: 1d array
+        Contrasts (1/threshold) corresponding at which r_norms are measured.
+    
+    Returns
+    -------
+    labels: 1d array
+        Labels of clustering.
+    
+    """
     # Clustering by curve of growth
     print('Clustering profiles...')
     N_min_sample = 10
