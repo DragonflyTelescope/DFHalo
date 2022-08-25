@@ -7,13 +7,15 @@ from photutils import detect_sources, deblend_sources
 from photutils import CircularAnnulus
 from photutils.segmentation import SegmentationImage
 
+DF_pixel_scale = 2.5
+
 def coord_Im2Array(X_IMAGE, Y_IMAGE, origin=1):
     """ Convert image coordniate to numpy array coordinate """
     x_arr, y_arr = int(max(round(Y_IMAGE)-origin, 0)), int(max(round(X_IMAGE)-origin, 0))
     return x_arr, y_arr
 
 def Intensity2SB(Intensity, BKG, ZP, pixel_scale=DF_pixel_scale):
-""" Convert intensity to surface brightness (mag/arcsec^2) given the background value, zero point and pixel scale """
+    """ Convert intensity to surface brightness (mag/arcsec^2) given the background value, zero point and pixel scale """
     I = np.atleast_1d(np.copy(Intensity))
     I[np.isnan(I)] = BKG
     if np.any(I<=BKG):
