@@ -11,7 +11,7 @@ install_requires = []
 
 setup(
 
-    name='elgfinder',
+    name='dfhalo',
 
     version='0.1',
 
