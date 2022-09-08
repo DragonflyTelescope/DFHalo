@@ -312,7 +312,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         
         return r_profiles
     
-def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.1], threshold_norm=0.5):
+def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.2], threshold_norm=0.5):
     """ Normalize profiles by fitting 1D models """
     if r_profiles is None:
         return None

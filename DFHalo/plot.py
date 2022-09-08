@@ -4,15 +4,31 @@ import matplotlib.pyplot as plt
 from astropy.stats import mad_std
 
 
-def plot_profiles(r_norms, bands, contrasts, save_dir='.', suffix=''):
+def plot_profiles(r_norms, filters, contrasts, save_dir='.', suffix=''):
     plt.figure(figsize=(10,8))
     colors = plt.cm.jet(np.linspace(0.1, 0.9, len(r_norms)))
     
-    for i, band in enumerate(bands):
+    # Profiles for G and R
+    r_norms_G = r_norms[filters=='G']
+    r_norms_R = r_norms[filters=='R']
+    
+    # Median profiles by stars (averaging frames)
+    r_norms_G_star = np.nanmedian(r_norms_G, axis=0)
+    r_norms_R_star = np.nanmedian(r_norms_R, axis=0)
+    
+    # Median profile averaging stars and frames for display norm
+    r_norm_med = np.nanmedian(np.nanmedian(r_norms, axis=1), axis=0)
+    
+    # Remove star-star variations caused by systematics
+    r_norms_ = r_norms.copy()
+    r_norms_[filters=='G']  = r_norms_G/ r_norms_G_star * r_norm_med
+    r_norms_[filters=='R']  = r_norms_R/ r_norms_R_star * r_norm_med
+    
+    for i, band in enumerate(filters):
         color = colors[i]
         
         # i-th frame
-        r_norm_i = r_norms[i]
+        r_norm_i = r_norms_[i]
 
         # Slightly offset the profiles
         dx = 1 + np.random.random(1) * 0.1
@@ -24,53 +40,38 @@ def plot_profiles(r_norms, bands, contrasts, save_dir='.', suffix=''):
 
         for j in range(len(r_norm_i)):
             # j-th star
-            plt.plot(contrasts * dx, r_norm_i[j], 'o', alpha=0.05, color=color)
+            plt.plot(contrasts * dx, r_norm_i[j], 'o', ms=3, alpha=0.05, color=color)
         
-        yerr = np.abs(np.nanmedian(r_norm_i, axis=0) - np.nanquantile(r_norm_i, [0.16,0.84], axis=0))
-        plt.plot(contrasts * dx, np.nanmedian(r_norm_i, axis=0), '-s', 
-                 ms=6, mec='k', lw=2, alpha=0.3, color=color, zorder=2)
-        plt.errorbar(contrasts * dx, np.nanmedian(r_norm_i, axis=0), 
+        # stars averaged
+        r_norm_i_med = np.nanmedian(r_norm_i, axis=0)
+        
+        yerr = np.abs(r_norm_i_med - np.nanquantile(r_norm_i, [0.16,0.84], axis=0))
+        plt.plot(contrasts * dx, r_norm_i_med, '-s',
+                 ms=5, mec='k', lw=2, alpha=0.2, color=color, zorder=2)
+        plt.errorbar(contrasts * dx, r_norm_i_med,
                      yerr=yerr, alpha=0.1, color=color, zorder=1)
         plt.text(contrasts[-1] * dx * 1.2, np.nanmedian(r_norm_i[:,-1]), i, fontsize=8)
     
-    r_norms_G = r_norms[bands=='G']
-    r_norms_R = r_norms[bands=='R']
+    # Median corrected profile among frames (averaging stars)
+    r_norms_med = np.nanmedian(r_norms_, axis=1)
     
-    r_norm = np.nanmedian(r_norms, axis=0)
-    r_norm_G = np.nanmedian(r_norms_G, axis=0)
-    r_norm_R = np.nanmedian(r_norms_R, axis=0)
-    
-    # Median profiles for G and R among frames
-    r_norm_G_med = np.nanmedian(r_norm_G, axis=0)
-    r_norm_R_med = np.nanmedian(r_norm_R, axis=0)
-    
-    plt.plot(contrasts, r_norm_G_med, '-', ms=5, lw=3, alpha=0.8, label='Median', color='lime', zorder=3)
-    plt.plot(contrasts, r_norm_R_med, '-', ms=5, lw=3, alpha=0.8, label='Median', color='r', zorder=3)
-    
-    ## median profile among frames (averaging stars)
-    plt.plot(contrasts, np.nanmedian(np.nanmedian(r_norms_G,axis=1), axis=0), '--', ms=5, lw=3, alpha=0.8, label='Median', color='lime', zorder=3)
-    plt.plot(contrasts, np.nanmedian(np.nanmedian(r_norms_R,axis=1), axis=0), '--', ms=5, lw=3, alpha=0.8, label='Median', color='r', zorder=3)
-    ##
+    plt.plot(contrasts, np.nanmedian(r_norms_med[filters=='G'], axis=0), '-', ms=5, lw=3, alpha=0.8, label='Median', color='lime', zorder=3)
+    plt.plot(contrasts, np.nanmedian(r_norms_med[filters=='R'], axis=0), '-', ms=5, lw=3, alpha=0.8, label='Median', color='r', zorder=3)
 
-    plt.ylim(0.9,22)
+    plt.ylim(0.85,23)
     plt.yscale('log')
     plt.xscale('log')
-    plt.xlabel('Contrasts')
-    plt.ylabel('R$_c$ / R$_0$')
+    plt.xlabel('Contrasts', fontsize=18)
+    plt.ylabel('R$_c$ / R$_0$', fontsize=18)
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, f'profiles{suffix}.png'))
     plt.show()
     
     plt.figure()
-    plt.plot(contrasts, mad_std(r_norm, axis=0), color='k')
-    plt.plot(contrasts, mad_std(r_norm_G, axis=0), color='lime')
-    plt.plot(contrasts, mad_std(r_norm_R, axis=0), color='r')
-    
-    ## sigma among frames (averaging stars)
-    plt.plot(contrasts, mad_std(np.nanmedian(r_norms, axis=1), axis=0), '--', color='k')
-    plt.plot(contrasts, mad_std(np.nanmedian(r_norms_G, axis=1), axis=0), '--', color='lime')
-    plt.plot(contrasts, mad_std(np.nanmedian(r_norms_R, axis=1), axis=0), '--', color='r')
-    ##
+    # sigma among frames (averaging stars)
+    plt.plot(contrasts, mad_std(r_norms_med, axis=0), '-', color='k')
+    plt.plot(contrasts, mad_std(r_norms_med[filters=='G'], axis=0), '-', color='lime')
+    plt.plot(contrasts, mad_std(r_norms_med[filters=='R'], axis=0), '-', color='r')
     
     plt.xlabel('Contrasts')
     plt.ylabel('$\sigma$')
@@ -82,7 +83,8 @@ def plot_profiles(r_norms, bands, contrasts, save_dir='.', suffix=''):
     
     
 def plot_profile_clustering(X, labels, contrasts, 
-                            norm=True, save_dir='.', suffix=''):
+                            norm=True, log=False,
+                            save_dir='.', suffix=''):
     
     unique_labels = set(labels)
     
@@ -101,11 +103,18 @@ def plot_profile_clustering(X, labels, contrasts,
         plt.yscale('log')
     else:
         plt.ylim(0.,3)
+        
+    if log:
+        plt.ylim(-0.3,1)
+        plt.ylabel('log (R$_c$ / R$_0$)')
+    else:
+        plt.ylabel('R$_c$ / R$_0$')
+        
     plt.xscale('log')
     plt.xlabel('Contrasts')
-    plt.ylabel('R$_c$ / R$_0$')
+    
     plt.title("Estimated number of clusters: %d" % n_clusters_)
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, f'clustering_profiles{suffix}.png'))
-#     plt.show()
+    plt.show()
     

@@ -1,7 +1,7 @@
 import math
 import numpy as np
 
-from astropy.stats import sigma_clip
+from astropy.stats import sigma_clip, SigmaClip
 from photutils import Background2D, SExtractorBackground
 from photutils import detect_sources, deblend_sources
 from photutils import CircularAnnulus

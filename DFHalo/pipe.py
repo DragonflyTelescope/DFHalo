@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.table import Table
 
-from .halo import *
+from .profile import *
 from .plot import *
 from .clustering import *
 
@@ -99,7 +99,8 @@ def extract_profile_pipe(hdu_list, segm_list,
 
             # Normalize profiles by 1D intercepts at threshold_norm
             r_norm = normalize_profiles(r_profiles, thresholds, 
-                                        threshold_range=[0.005,0.1], threshold_norm=0.5)
+                                        threshold_range=[0.005,0.2],
+                                        threshold_norm=0.5)
             
         if r_norm is None:
             N_star = 0
@@ -112,6 +113,7 @@ def extract_profile_pipe(hdu_list, segm_list,
         
     # Get max number of sources to set array dimensions
     N_star_max = np.max([item['N_star'] for (key,item) in profiles.items()])
+    print("N star = ", N_star_max)
     
     # Stack profiles into one long array
     r_norms = np.array([])
@@ -213,7 +215,13 @@ def eval_halo_pipe(field,
     plot_profiles(r_norms, filters, contrasts, save_dir=save_dir, suffix='_'+field)
     
     # Clustering pofiles
-    labels = clustering_profiles(r_norms, filters, contrasts, save_dir=save_dir, field=field)
+#    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
+#                                          log=False, eps_grid = np.arange(0.2,0.65,0.05),
+#                                          save_dir=save_dir, field=field)
+                                      
+    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
+                                            log=True, eps_grid = np.arange(0.1,0.3,0.02),
+                                            save_dir=save_dir, field=field)
     
     table = Table({'frame':hdu_list, 'filter':filters_, 'flag':flags_})
     table['label'] = -1 * np.ones_like(flags_)
