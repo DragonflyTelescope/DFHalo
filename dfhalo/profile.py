@@ -294,7 +294,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
             # Compute profiles
             r_rbin, z_rbin, r_satr = compute_radial_profile(thumb.img_thumb, 
                                                             cen=thumb.cen_star,
-                                                            back=thumb.bkg,
+                                                            back=0., #back=thumb.bkg,
                                                             dr=0.2, seeing=2.5, sky_mean=0, 
                                                             pixel_scale=pixel_scale, 
                                                             core_undersample=False)
