@@ -1,6 +1,7 @@
-import os
+import os, sys
 import builtins
 from setuptools import setup, find_packages
+sys.path.append('src')
 
 abspath = os.path.abspath(os.path.dirname(__file__))
 
