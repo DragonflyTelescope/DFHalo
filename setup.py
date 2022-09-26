@@ -9,15 +9,12 @@ with open(os.path.join(abspath, 'README.md'), encoding='utf-8') as f:
 
 install_requires = []
 
-builtins.__SETUP__ = True
-import dfhalo
-version = dfhalo.__version__
 
 setup(
 
     name='dfhalo',
 
-    version=version,
+    version='0.1',
 
     description='Halo Assessment for single exposures taken by Dragonfly',
 

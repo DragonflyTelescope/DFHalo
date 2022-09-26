@@ -6,20 +6,13 @@ DF_raw_pixel_scale = 2.85
 
 # Gain (e-/ADU) of Dragonfly
 DF_Gain = 0.37
+    
+from . import utils
+from . import profile
 
-try:
-    __SETUP__ = True
-except NameError:
-    __SETUP__ = False
-    
+from . import clustering
+from . import pipe
 
-if not __SETUP__:
-    from . import utils
-    from . import profile
-    
-    from . import clustering
-    from . import pipe
-    
-    from . import plot
-    from . import atlas
+from . import plot
+from . import atlas
 
