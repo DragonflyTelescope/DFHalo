@@ -28,7 +28,9 @@ setup(
 
     keywords='astronomy',
 
-    packages=find_packages(include=['DFhalo','DFHalo.']),
+    packages=find_packages(where="src"),
+    
+    package_dir={"": "src"},
 
     python_requires='>=3.7',
 
