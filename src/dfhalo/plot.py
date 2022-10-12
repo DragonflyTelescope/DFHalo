@@ -5,6 +5,8 @@ from astropy.stats import mad_std
 
 
 def plot_profiles(r_norms, filters, contrasts, save_dir='.', suffix=''):
+    """ Display profiles """
+    
     plt.figure(figsize=(10,8))
     colors = plt.cm.jet(np.linspace(0.1, 0.9, len(r_norms)))
     
@@ -85,6 +87,7 @@ def plot_profiles(r_norms, filters, contrasts, save_dir='.', suffix=''):
 def plot_profile_clustering(X, labels, contrasts, 
                             norm=True, log=False,
                             save_dir='.', suffix=''):
+    """ Display clustering result of profiles. """
     
     unique_labels = set(labels)
     

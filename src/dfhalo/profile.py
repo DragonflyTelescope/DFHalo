@@ -16,63 +16,6 @@ from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 from astropy.stats import sigma_clip
 from astropy.utils.exceptions import AstropyUserWarning
-    
-from .utils import Intensity2SB, Thumb_Image
-from .atlas import query_atlas
-
-def query_atlas_catalog(ra_range, 
-                        dec_range,
-                        wsid, 
-                        password, 
-                        atalas_dir='./', 
-                        mag_limit=12):
-    
-    """ Query the ATLAS Catalog using Casjob tool """
-    
-    catalog_match = os.path.join(atalas_dir, 'atlas_*.csv')
-    
-    # Check and delete previous queries
-    for fn in glob.glob(catalog_match):
-        os.remove(fn)
-
-    # Query the ATLAS catalog, sleep until finished
-    out = query_atlas(ra_range, dec_range,
-                      wsid=wsid, password=password,
-                      mag_limit=mag_limit)
-    while len(glob.glob(catalog_match))==0:
-        time.sleep(0.1)
-
-    # Read and rename the queried table with field name
-    fname_query = glob.glob(catalog_match)[0]
-
-    return fname_query
-
-def measure_dist_to_edge(table, mask_area,
-                         Xname="X_IMAGE", Yname="Y_IMAGE", origin=0):
-    """ 
-    Measure distance of each source to the edge of the mask.
-    Note photutils is 0-based and SExtractor is 1-based.
-    
-    """
-    
-    # Position at which mask map starts/ends
-    dX_edge = np.diff(np.sum(~mask_area,axis=0))
-    dY_edge = np.diff(np.sum(~mask_area,axis=1))
-    
-    X_data_min = np.argmax(dX_edge) + origin
-    X_data_max = np.argmin(dX_edge) + origin
-    Y_data_min = np.argmax(dY_edge) + origin
-    Y_data_max = np.argmin(dY_edge) + origin
-    
-    # Compute distances
-    dist_mask = np.empty(len(table))
-    for i, obj in enumerate(table):
-        X_obj, Y_obj = (obj[Xname], obj[Yname])
-        X_edge = np.min([X_obj-X_data_min, X_data_max-X_obj])
-        Y_edge = np.min([Y_obj-Y_data_min, Y_data_max-Y_obj])
-        dist_mask[i] = np.min([X_edge, Y_edge])
-
-    return dist_mask
 
 def calculate_threshold_radius(r, I, threshold, I_satr):
     """ Calculate the radius at which I drop certain fraction of I_satr """
@@ -86,7 +29,9 @@ def compute_radial_profile(img, cen=None, mask=None,
                           sky_mean=0, dr=1,
                           core_undersample=False, 
                           use_annulus=False):
-
+    
+    """ Extract radial profiles from the image cutout. """
+    
     if mask is None:
         mask = np.zeros_like(img, dtype=bool)
         
@@ -183,7 +128,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
                               N_source_min=3000,
                               dist_mask_min=None,
                               pixel_scale=2.5,
-                              sep = 5*u.arcsec,
+                              sep=5*u.arcsec,
                               bkg_val=0):
     
     """ 
@@ -203,8 +148,8 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         Thresholds at x% of the saturation brightness.
     mag_range: list
         Range of magnitude of bright stars for measurement
-    N_source_min: int, default 3600
-        Minimum number of detected sources required.
+    N_source_min: int
+        Minimum number of detected sources required in the frame.
     sep: astropy.units.Quantity, default 5*u.arcsec
         Crossmatch seperation.
     dist_mask_min: int, default None
@@ -213,11 +158,11 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
     Returns
     -------
     r_norms: 3d np.array
-        Curves of Growth (axis 0: frame, axis 1: star, axis 3: radius)
-    
-    
+        Curves of Growth (axis 0: frame, axis 1: star, axis 2: radius)
         
     """
+    from .utils import Intensity2SB, Thumb_Image, measure_dist_to_edge
+    
     # Read data
     hdu = fits.open(fn)
     data_full = hdu[0].data
@@ -313,7 +258,28 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         return r_profiles
     
 def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.2], threshold_norm=0.5):
-    """ Normalize profiles by fitting 1D models """
+    """
+    Normalize profiles by fitting 1D linear model
+    
+    Parameters
+    ----------
+    r_profiles: 2d np.array
+        Curves of Growth (axis 0: star, axis 1: radius)
+    thresholds: np.array
+        Thresholds at x% of the saturation brightness.
+    threshold_range: [float , float]
+        Range of threshold for fitting 1D linear model.
+    threshold_norm: float
+        Threshold at which the curves are normalized.
+        The value is interpolated from 1D linear model.
+    
+    Returns
+    -------
+    r_profiles_norm: 2d np.array
+        Normalized curves of Growth (axis 0: star, axis 1: radius)
+        
+    """
+    
     if r_profiles is None:
         return None
     

@@ -21,12 +21,20 @@ def query_atlas(ra_range, dec_range,
                 mag_limit=16):
     """
     Query ATLAS database.
+    The query result is saved under './ATALS' directory.
     
-    ra_range: list
-    dec_range: list
-    wsid: casjob WSID
-    password: casjob password
-    mag_limit: limiting magnitude
+    Parameters
+    ----------
+    ra_range: tuple or list
+        Range of RA
+    dec_range: tuple or list
+        Range of dec
+    wsid: str
+        casjob WSID
+    password: str
+        casjob password
+    mag_limit: float
+        Limiting magnitude
     
     """
     

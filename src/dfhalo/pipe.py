@@ -9,9 +9,9 @@ from astropy.io import fits
 from astropy.table import Table
 
 from .profile import *
-from .plot import *
 from .clustering import *
-
+from .utils import *
+from .plot import *
 
 def extract_profile_pipe(hdu_list, segm_list, 
                          catalog_list, table_atlas, 
@@ -22,7 +22,10 @@ def extract_profile_pipe(hdu_list, segm_list,
                          dist_mask_min=None):
     
     """ 
-    Extract curves of growth.
+    Extract curves of growth in the list of frames.
+    
+    A list of corresponding segementation maps, SE catalogs, and
+    a crossmatched catalog with ATALS are required.
     
     Parameters
     ----------
@@ -37,16 +40,20 @@ def extract_profile_pipe(hdu_list, segm_list,
     thresholds: np.array
         Thresholds at x% of the saturation brightness.
     mag_range: list
-        Range of magnitude of bright stars for measurement
-    dist_mask_min: int, default None
+        Range of magnitude of bright stars for measurement.
+    pixel_scale : float
+        Pixel scale in arcsec/pixel
+    N_source_min: int
+        Minimum number of sources required in the frame.
+    dist_mask_min: int, optional, default None
         Minimum distance to the field edges mask.
         
     Returns
     -------
     r_norms: 3d np.array
-        Curves of Growth (axis 0: frame, axis 1: star, axis 3: radius)
+        Curves of Growth (axis 0: frame, axis 1: star, axis 2: radius)
     flags: 1d n.array
-        1: Good measurements  0: Bad
+        1: Good  0: Bad
     
     """
     
@@ -152,8 +159,12 @@ def eval_halo_pipe(field,
     """ 
     Evaluate bright stellar halos.
     
+    A list of corresponding segementation maps and SE catalogs are required.
+    
     Parameters
     ----------
+    field: str
+        Field name.
     hdu_list: list
         Path list of frames.
     segm_list: list
@@ -173,8 +184,8 @@ def eval_halo_pipe(field,
     mag_range: list
         Range of magnitude of bright stars for measurement
     pixel_scale : float
-        pixel scale in arcsec/pixel
-    dist_mask_min: int, default None
+        Pixel scale in arcsec/pixel
+    dist_mask_min: int, optional, default None
         Minimum distance to the field edges mask.
     
     """
@@ -218,7 +229,8 @@ def eval_halo_pipe(field,
 #    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
 #                                          log=False, eps_grid = np.arange(0.2,0.65,0.05),
 #                                          save_dir=save_dir, field=field)
-                                      
+                            
+    # In log unit
     labels = clustering_profiles_optimize(r_norms, filters, contrasts,
                                             log=True, eps_grid = np.arange(0.1,0.3,0.02),
                                             save_dir=save_dir, field=field)

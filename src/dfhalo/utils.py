@@ -9,6 +9,57 @@ from photutils.segmentation import SegmentationImage
 
 DF_pixel_scale = 2.5
 
+def query_atlas_catalog(ra_range,
+                        dec_range,
+                        wsid,
+                        password,
+                        atalas_dir='./',
+                        mag_limit=12):
+    
+    """
+    Query the ATLAS Catalog using Casjob tool.
+    The query result is saved under atalas_dir directory.
+    
+    Parameters
+    ----------
+    ra_range: tuple or list
+        Range of RA
+    dec_range: tuple or list
+        Range of dec
+    wsid: str
+        casjob WSID
+    password: str
+        casjob password
+    mag_limit: float
+        Limiting magnitude
+    
+    Returns
+    -------
+    fname_query: str
+        Name of the queried catalog.
+        
+    """
+    from .atlas import query_atlas
+    
+    catalog_match = os.path.join(atalas_dir, 'atlas_*.csv')
+    
+    # Check and delete previous queries
+    for fn in glob.glob(catalog_match):
+        os.remove(fn)
+
+    # Query the ATLAS catalog, sleep until finished
+    out = query_atlas(ra_range, dec_range,
+                      wsid=wsid, password=password,
+                      mag_limit=mag_limit)
+    while len(glob.glob(catalog_match))==0:
+        time.sleep(0.1)
+
+    # Read and rename the queried table with field name
+    fname_query = glob.glob(catalog_match)[0]
+
+    return fname_query
+    
+
 def coord_Im2Array(X_IMAGE, Y_IMAGE, origin=1):
     """ Convert image coordniate to numpy array coordinate """
     x_arr, y_arr = int(max(round(Y_IMAGE)-origin, 0)), int(max(round(X_IMAGE)-origin, 0))
@@ -22,7 +73,33 @@ def Intensity2SB(Intensity, BKG, ZP, pixel_scale=DF_pixel_scale):
         I[I<=BKG] = np.nan
     I_SB = -2.5*np.log10(I - BKG) + ZP + 2.5 * math.log10(pixel_scale**2)
     return I_SB
-    
+ 
+def measure_dist_to_edge(table, mask_area,
+                     Xname="X_IMAGE", Yname="Y_IMAGE", origin=0):
+    """
+    Measure distance of each source to the edge of the mask.
+    Note photutils is 0-based and SExtractor is 1-based.
+
+    """
+
+    # Position at which mask map starts/ends
+    dX_edge = np.diff(np.sum(~mask_area,axis=0))
+    dY_edge = np.diff(np.sum(~mask_area,axis=1))
+
+    X_data_min = np.argmax(dX_edge) + origin
+    X_data_max = np.argmin(dX_edge) + origin
+    Y_data_min = np.argmax(dY_edge) + origin
+    Y_data_max = np.argmin(dY_edge) + origin
+
+    # Compute distances
+    dist_mask = np.empty(len(table))
+    for i, obj in enumerate(table):
+        X_obj, Y_obj = (obj[Xname], obj[Yname])
+        X_edge = np.min([X_obj-X_data_min, X_data_max-X_obj])
+        Y_edge = np.min([Y_obj-Y_data_min, Y_data_max-Y_obj])
+        dist_mask[i] = np.min([X_edge, Y_edge])
+
+    return dist_mask
     
 def background_extraction(field, mask=None, return_rms=True,
                       b_size=64, f_size=3, n_iter=5, **kwargs):

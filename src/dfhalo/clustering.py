@@ -8,8 +8,9 @@ from sklearn import metrics
 from .plot import plot_profile_clustering
 
 def clustering_profiles_optimize(r_norms, filters, contrasts,
-                                 eps_grid=np.arange(0.1,0.3,0.02), log=True,
-                                 N_min_sample=5, save_dir='.', field='', plot=True):
+                                 eps_grid=np.arange(0.1,0.3,0.02),
+                                 N_min_sample=5, log=True,
+                                 field='', save_dir='.', plot=True):
     
     """
     Do clustering on profiles with optimized hyperparameter eps.
@@ -18,11 +19,19 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
     ----------
     
     r_norms: 3d np.array
-        Curves of Growth (axis 0: frame, axis 1: star, axis 3: radius)
+        Curves of Growth (axis 0: frame, axis 1: star, axis 2: radius)
     filters: str np.array
         Filters of frames.
     contrasts: 1d array
         Contrasts (1/threshold) corresponding at which r_norms are measured.
+    eps_grid: 1d array
+        Input grid of eps for parameter tuning.
+    N_min_sample: int, default 5
+        Minimum number of samples in a single cluster in DBSCAN clustering.
+    log: bool, default True
+        Whether to clustering profiles in log space.
+    field: str
+        Field name
     
     Returns
     -------
@@ -67,7 +76,7 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
     for k, eps in enumerate(eps_grid):
         
         labels = clustering_data(X, contrasts,
-                                 eps=eps, N_min_sample=N_min_sample,
+                                 eps=eps, N_min_sample=N_min_sample, log=log,
                                  save_dir=save_dir, field=field, plot=False)
         
         if len(set(labels)) > 1:
@@ -86,8 +95,9 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
     
     eps_opt = eps_grid[np.nanargmax(scores)]
     
-    labels = clustering_data(X, contrasts, eps=eps_opt, log=log,
-                             N_min_sample=N_min_sample, plot=plot)
+    labels = clustering_data(X, contrasts, eps=eps_opt,
+                             N_min_sample=N_min_sample,
+                             log=log, plot=plot)
     
     if plot:
         plot_profile_clustering(X_, labels, contrasts,
@@ -98,7 +108,7 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
 
 
 def clustering_data(X, contrasts,
-                    eps=0.5, N_min_sample=5, log=True,
+                    eps=0.2, log=True, N_min_sample=5,
                     save_dir='.', field='', plot=True):
     
     """
@@ -111,7 +121,13 @@ def clustering_data(X, contrasts,
         Training data
     contrasts: 1d array
         Contrasts (1/threshold) corresponding at which r_norms are measured.
-    
+    eps: float, default 0.5
+        eps in DBSCAN clustering.
+    log: bool, default True
+        Whether to clustering profiles in log space.
+    N_min_sample: int, default 5
+        Minimum number of samples in a single cluster in DBSCAN clustering.
+        
     Returns
     -------
     labels: 1d array
