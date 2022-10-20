@@ -10,10 +10,10 @@ import numpy as np
 from shutil import copyfile
 
 package_dir = os.path.dirname(__file__)
-script_dir = os.path.normpath(os.path.join(package_dir, '../scripts'))
-config_dir = os.path.normpath(os.path.join(package_dir, '../configs'))
+script_dir = os.path.normpath(os.path.join(package_dir, '../../scripts'))
+config_dir = os.path.normpath(os.path.join(package_dir, '../../configs'))
 
-default_atlas_config = os.path.join(config_dir, './casjobs.config')
+default_atlas_config = os.path.join(config_dir, 'casjobs.config')
 exe_path = os.path.join(script_dir, 'casjobs.jar')
 
 def query_atlas(ra_range, dec_range,
