@@ -1,5 +1,7 @@
 import os
+import glob
 import math
+import time
 import numpy as np
 
 from astropy.stats import sigma_clip, SigmaClip
