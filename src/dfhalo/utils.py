@@ -6,7 +6,7 @@ import numpy as np
 
 from astropy.stats import sigma_clip, SigmaClip
 from astropy.wcs import WCS
-from astropy.table import Table
+from astropy.table import Table, vstack
 
 from photutils import Background2D, SExtractorBackground
 from photutils import detect_sources, deblend_sources
@@ -122,6 +122,12 @@ def make_atlas_catalog(ra_range,
     
     return table_atlas
 
+def calculate_ra_dec_range(header):
+    """ Calculate RA and Dec range from the wcs of header. """
+    footprint = WCS(header).calc_footprint()
+    ra_range = (footprint[:,0].min(), footprint[:,0].max())
+    dec_range = (footprint[:,1].min(), footprint[:,1].max())
+    return ra_range, dec_range
 
 def coord_Im2Array(X_IMAGE, Y_IMAGE, origin=1):
     """ Convert image coordniate to numpy array coordinate """
@@ -164,12 +170,6 @@ def measure_dist_to_edge(table, mask_area,
 
     return dist_mask
     
-def calculate_ra_dec_range(header):
-    """ Calculate RA and Dec range from the wcs of header. """
-    footprint = WCS(header).calc_footprint()
-    ra_range = (footprint[:,0].min(), footprint[:,0].max())
-    dec_range = (footprint[:,1].min(), footprint[:,1].max())
-    return ra_range, dec_range
     
 def background_extraction(field, mask=None, return_rms=True,
                       b_size=64, f_size=3, n_iter=5, **kwargs):
