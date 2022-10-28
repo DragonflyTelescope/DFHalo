@@ -5,6 +5,9 @@ import time
 import numpy as np
 
 from astropy.stats import sigma_clip, SigmaClip
+from astropy.wcs import WCS
+from astropy.table import Table
+
 from photutils import Background2D, SExtractorBackground
 from photutils import detect_sources, deblend_sources
 from photutils import CircularAnnulus
@@ -34,7 +37,7 @@ def query_atlas_catalog(ra_range,
     password: str
         casjob password
     mag_limit: float
-        Limiting magnitude
+        Limiting magnitude in g
     
     Returns
     -------
@@ -62,6 +65,63 @@ def query_atlas_catalog(ra_range,
 
     return fname_query
     
+def make_atlas_catalog(ra_range,
+                       dec_range,
+                       catalog_dir,
+                       mag_limit=12):
+
+    """
+    Make the ATLAS Catalog from the catalog csv files.
+
+    Parameters
+    ----------
+    ra_range: tuple or list
+        Range of RA
+    dec_range: tuple or list
+        Range of dec
+    catalog_atals_dir: str
+        Path to the local ATLAS catalog files.
+        In the dir files are sorted by mag or dec (e.g. 00_m_16).
+    mag_limit: float
+        Limiting magnitude in g
+
+    Returns
+    -------
+    table_atlas: astropy.Table
+        ATLAS table
+        
+    """
+    
+    # RA and Dec integer
+    ra_intgs = np.arange(np.floor(ra_range[0]), np.floor(ra_range[1])+1, 1, dtype=int)
+    dec_intgs = np.arange(np.floor(dec_range[0]), np.floor(dec_range[1])+1, 1, dtype=int)
+    
+    # Read and join square degree catalogs
+    table_atlas = Table()
+    for ra_int in ra_intgs:
+        for dec_int in dec_intgs:
+            fn_cat_sqdeg = os.path.join(catalog_dir,'00_m_16/{0}+{1}.rc2'.format(ra_int, dec_int))
+            tab_sqdeg = Table.read(fn_cat_sqdeg, format='ascii')
+            table_atlas = vstack([table_atlas, tab_sqdeg])
+
+    # Keep the coordinates and g and r mag
+    table_atlas.keep_columns(['col1','col2','col22','col23','col26','col27'])
+
+    # Rename and assign unit
+    # See readme on archive.stsci.edu/hlsps/atlas-refcat2
+    table_atlas = Table(table_atlas, names=['RA', 'Dec',  'g', 'dg', 'r', 'dr'])
+    table_atlas['RA'] = table_atlas['RA']/1e9
+    table_atlas['Dec'] = table_atlas['Dec']/1e9
+    table_atlas['g'] = table_atlas['g']/1e3
+    table_atlas['dg'] = table_atlas['dg']/1e3
+    table_atlas['r'] = table_atlas['r']/1e3
+    table_atlas['dr'] = table_atlas['dr']/1e3
+    
+    # magnitude cut
+    table_atlas[table_atlas['g']<=mag_limit]
+    
+    return table_atlas
+
 
 def coord_Im2Array(X_IMAGE, Y_IMAGE, origin=1):
     """ Convert image coordniate to numpy array coordinate """
@@ -103,6 +163,13 @@ def measure_dist_to_edge(table, mask_area,
         dist_mask[i] = np.min([X_edge, Y_edge])
 
     return dist_mask
+    
+def calculate_ra_dec_range(header):
+    """ Calculate RA and Dec range from the wcs of header. """
+    footprint = WCS(header).calc_footprint()
+    ra_range = (footprint[:,0].min(), footprint[:,0].max())
+    dec_range = (footprint[:,1].min(), footprint[:,1].max())
+    return ra_range, dec_range
     
 def background_extraction(field, mask=None, return_rms=True,
                       b_size=64, f_size=3, n_iter=5, **kwargs):

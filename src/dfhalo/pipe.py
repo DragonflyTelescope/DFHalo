@@ -154,6 +154,7 @@ def eval_halo_pipe(field,
                    pixel_scale=2.5,
                    dist_mask_min=100,
                    atalas_dir='./',
+                   catalog_atals_dir=None,
                    save_dir='./'):
     
     """ 
@@ -187,6 +188,12 @@ def eval_halo_pipe(field,
         Pixel scale in arcsec/pixel
     dist_mask_min: int, optional, default None
         Minimum distance to the field edges mask.
+    atalas_dir: str, optional
+        Path to store the ATLAS query file.
+    catalog_atals_dir: str, optional
+        Path to the local ATLAS catalog files.
+        If specified, ATALS catalog will be made locally.
+        In the dir files are sorted by mag (e.g. 00_m_16) or dec.
     
     """
     
@@ -195,14 +202,17 @@ def eval_halo_pipe(field,
     # Get filter names
     filters_ = np.array([fits.getheader(fn)["FILTER"] for fn in hdu_list])   
     
-    # Query ATLAS catalog and sleep a while for its finish
-    fname_query = query_atlas_catalog(ra_range, dec_range, wsid, password, atalas_dir, mag_limit=12)
-    time.sleep(5)
-    
-    # Rename and read the queried catalog
-    fname_atlas = os.path.join(atalas_dir, f'{field}_atlas.csv')
-    shutil.copy(fname_query, fname_atlas)
-    table_atlas = Table.read(fname_atlas, format='csv')
+    if catalog_atals_dir is None:
+        # Query ATLAS catalog and sleep a while for its finish
+        fname_query = query_atlas_catalog(ra_range, dec_range, wsid, password, atalas_dir, mag_limit=12)
+        time.sleep(5)
+        
+        # Rename and read the queried catalog
+        fname_atlas = os.path.join(atalas_dir, f'{field}_atlas.csv')
+        shutil.copy(fname_query, fname_atlas)
+        table_atlas = Table.read(fname_atlas, format='csv')
+    else:
+        table_atlas = make_atlas_catalog(ra_range, dec_range, mag_limit=12, catalog_dir=catalog_atals_dir)
     
     # Contrasts from thresholds
     contrasts = 1/thresholds

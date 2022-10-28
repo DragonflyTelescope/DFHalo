@@ -190,6 +190,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
     # Skip if no enough detected sources
     cond = (tab_SE['MAG_AUTO']>=13) & (tab_SE['MAG_AUTO']<=18)
     if len(tab_SE[cond])< N_source_min:
+        print('Too few sources.')
         return None
     else:
         # Cross match SE catalog and ATLAS catalog

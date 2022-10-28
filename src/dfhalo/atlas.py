@@ -18,7 +18,7 @@ exe_path = os.path.join(script_dir, 'casjobs.jar')
 
 def query_atlas(ra_range, dec_range,
                 wsid, password,
-                mag_limit=16):
+                mag_limit=12):
     """
     Query ATLAS database.
     The query result is saved under './ATALS' directory.
@@ -34,7 +34,7 @@ def query_atlas(ra_range, dec_range,
     password: str
         casjob password
     mag_limit: float
-        Limiting magnitude
+        Limiting magnitude in g
     
     """
     
