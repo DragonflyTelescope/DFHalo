@@ -92,6 +92,9 @@ def make_atlas_catalog(ra_range,
         
     """
     
+    # Keep the coordinates and g and r mag
+    use_columns_atlas = ['col1','col2','col22','col23','col26','col27']
+    
     # RA and Dec integer
     ra_intgs = np.arange(np.floor(ra_range[0]), np.floor(ra_range[1])+1, 1, dtype=int)
     dec_intgs = np.arange(np.floor(dec_range[0]), np.floor(dec_range[1])+1, 1, dtype=int)
@@ -101,11 +104,9 @@ def make_atlas_catalog(ra_range,
     for ra_int in ra_intgs:
         for dec_int in dec_intgs:
             fn_cat_sqdeg = os.path.join(catalog_dir,'00_m_16/{0}+{1}.rc2'.format(ra_int, dec_int))
-            tab_sqdeg = Table.read(fn_cat_sqdeg, format='ascii')
+            tab_sqdeg = Table.read(fn_cat_sqdeg, format='ascii',
+                                   include_names=use_columns_atlas)
             table_atlas = vstack([table_atlas, tab_sqdeg])
-
-    # Keep the coordinates and g and r mag
-    table_atlas.keep_columns(['col1','col2','col22','col23','col26','col27'])
 
     # Rename and assign unit
     # See readme on archive.stsci.edu/hlsps/atlas-refcat2
