@@ -220,6 +220,9 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
             dist_mask = measure_dist_to_edge(tab_SE_match, mask_nan)
             table_star = tab_SE_match[dist_mask>dist_mask_min]
         
+        # Do not use stars with bad photometry
+        table_star = table_star[table_star['FLAGS'] <=8]
+        
         # Sort by g mag
         table_star.sort('gmag_atlas')
         
