@@ -103,7 +103,9 @@ def make_atlas_catalog(ra_range,
     table_atlas = Table()
     for ra_int in ra_intgs:
         for dec_int in dec_intgs:
-            fn_cat_sqdeg = os.path.join(catalog_dir,'00_m_16/{0}+{1}.rc2'.format(ra_int, dec_int))
+            dec_str = '+' + str(dec_int) if dec_int>0 else '-' + str(abs(dec_int))
+            radec_str = '00_m_16/{0}{1}.rc2'.format(ra_int, dec_str)
+            fn_cat_sqdeg = os.path.join(catalog_dir, radec_str)
             tab_sqdeg = Table.read(fn_cat_sqdeg, format='ascii',
                                    include_names=use_columns_atlas)
             table_atlas = vstack([table_atlas, tab_sqdeg])
