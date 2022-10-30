@@ -103,8 +103,10 @@ def make_atlas_catalog(ra_range,
     table_atlas = Table()
     for ra_int in ra_intgs:
         for dec_int in dec_intgs:
-            dec_str = '+' + str(dec_int) if dec_int>0 else '-' + str(abs(dec_int))
-            radec_str = '00_m_16/{0}{1}.rc2'.format(ra_int, dec_str)
+            ra_str = ''.join([str(ra_int // 100 % 10), str(ra_int // 10 % 10), str(ra_int % 10)])
+            dec_str= ''.join([str(abs(dec_int) // 10 % 10), str(abs(dec_int) % 10)])
+            dec_str = '+' + dec_str if dec_int>0 else '-' + dec_str
+            radec_str = '00_m_16/{0}{1}.rc2'.format(ra_str, dec_str)
             fn_cat_sqdeg = os.path.join(catalog_dir, radec_str)
             tab_sqdeg = Table.read(fn_cat_sqdeg, format='ascii',
                                    include_names=use_columns_atlas)
@@ -124,6 +126,12 @@ def make_atlas_catalog(ra_range,
     table_atlas = table_atlas[table_atlas['g']<=mag_limit]
     
     return table_atlas
+    
+def get_string_number(number):
+    """ Get filled string of a number """
+    ood = int(np.log10(number))
+    string = ''.join([str(number // 10**n % 10) for n in reversed(range(ood+1))])
+    return string
 
 def calculate_ra_dec_range(header):
     """ Calculate RA and Dec range from the wcs of header. """
