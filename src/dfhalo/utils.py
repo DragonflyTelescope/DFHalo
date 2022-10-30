@@ -110,15 +110,15 @@ def make_atlas_catalog(ra_range,
     # Rename and assign unit
     # See readme on archive.stsci.edu/hlsps/atlas-refcat2
     table_atlas = Table(table_atlas, names=['RA', 'Dec',  'g', 'dg', 'r', 'dr'])
-    table_atlas['RA'] = table_atlas['RA']/1e9
-    table_atlas['Dec'] = table_atlas['Dec']/1e9
+    table_atlas['RA'] = table_atlas['RA']/1e8
+    table_atlas['Dec'] = table_atlas['Dec']/1e8
     table_atlas['g'] = table_atlas['g']/1e3
     table_atlas['dg'] = table_atlas['dg']/1e3
     table_atlas['r'] = table_atlas['r']/1e3
     table_atlas['dr'] = table_atlas['dr']/1e3
     
     # magnitude cut
-    table_atlas[table_atlas['g']<=mag_limit]
+    table_atlas = table_atlas[table_atlas['g']<=mag_limit]
     
     return table_atlas
 
