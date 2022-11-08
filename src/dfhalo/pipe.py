@@ -18,8 +18,9 @@ def extract_profile_pipe(hdu_list, segm_list,
                          thresholds=np.logspace(-0.3,-3.,22), 
                          mag_range=[8.5,10.5],
                          pixel_scale=2.5,
-                         N_source_min=3600,
-                         dist_mask_min=None):
+                         N_source_min=3000,
+                         dist_mask_min=None,
+                         plot=True):
     
     """ 
     Extract curves of growth in the list of frames.
@@ -43,11 +44,14 @@ def extract_profile_pipe(hdu_list, segm_list,
         Range of magnitude of bright stars for measurement.
     pixel_scale : float
         Pixel scale in arcsec/pixel
-    N_source_min: int
+    N_source_min: int, default 3000
         Minimum number of sources required in the frame.
+        If set None, use a 2.5% quantile.
     dist_mask_min: int, optional, default None
         Minimum distance to the field edges mask.
-        
+    plot: bool, optional
+        Whether to draw diagnostic plots.
+    
     Returns
     -------
     r_norms: 3d np.array
@@ -61,26 +65,29 @@ def extract_profile_pipe(hdu_list, segm_list,
     filters = np.array([fits.getheader(fn)["FILTER"] for fn in hdu_list])   
     
     # Set minimum number of intermediate bright sources detected
-    N_source = np.zeros(len(hdu_list), dtype=int)
-    for i, (catalog_path) in enumerate(catalog_list):
-        SE_catalog = Table.read(catalog_path, format='ascii.sextractor')
-        N_source[i] = len(SE_catalog[(SE_catalog['MAG_AUTO']>=13) & (SE_catalog['MAG_AUTO']<18)])
-    N_source_G = N_source[filters=='G']
-    N_source_R = N_source[filters=='R']
-    
-    IQR_N_source_G = np.quantile(N_source_G, 0.84)-np.quantile(N_source_G, 0.16)
-    IQR_N_source_R = np.quantile(N_source_R, 0.84)-np.quantile(N_source_R, 0.16)
-    N_source_G_min = int(np.median(N_source_G)-IQR_N_source_G)
-    N_source_R_min = int(np.median(N_source_R)-IQR_N_source_R)
-    
-    # Plot histograms of # of detected sources
-    plt.figure()
-    plt.hist(N_source_G, color='seagreen', bins=8, alpha=0.7)
-    plt.hist(N_source_R, color='firebrick', bins=8, alpha=0.7)
-    plt.axvline(N_source_G_min, color='lime', ls='--', alpha=0.9)
-    plt.axvline(N_source_R_min, color='r', ls='--', alpha=0.9)
-    plt.xlabel('# source detected')
-    plt.show()
+    if N_source_min is None:
+        N_source = np.zeros(len(hdu_list), dtype=int)
+        for i, (catalog_path) in enumerate(catalog_list):
+            SE_catalog = Table.read(catalog_path, format='ascii.sextractor')
+            N_source[i] = len(SE_catalog[(SE_catalog['MAG_AUTO']>=13) & (SE_catalog['MAG_AUTO']<18)])
+        N_source_G = N_source[filters=='G']
+        N_source_R = N_source[filters=='R']
+        
+        N_source_G_min = np.quantile(N_source_G, 0.025)
+        N_source_R_min = np.quantile(N_source_R, 0.025)
+        
+        # Plot histograms of # of detected sources
+        if plot:
+            plt.figure()
+            plt.hist(N_source_G, color='seagreen', bins=8, alpha=0.7)
+            plt.hist(N_source_R, color='firebrick', bins=8, alpha=0.7)
+            plt.axvline(N_source_G_min, color='lime', ls='--', alpha=0.9)
+            plt.axvline(N_source_R_min, color='r', ls='--', alpha=0.9)
+            plt.xlabel('# of source detected')
+            plt.show()
+            
+    else:
+        N_source_G_min = N_source_R_min = 3000
     
     # Measure profiles
     profiles = {}
@@ -108,7 +115,7 @@ def extract_profile_pipe(hdu_list, segm_list,
             r_norm = normalize_profiles(r_profiles, thresholds, 
                                         threshold_range=[0.005,0.2],
                                         threshold_norm=0.5)
-            
+        
         if r_norm is None:
             N_star = 0
             flags[i] = 0
@@ -120,7 +127,7 @@ def extract_profile_pipe(hdu_list, segm_list,
         
     # Get max number of sources to set array dimensions
     N_star_max = np.max([item['N_star'] for (key,item) in profiles.items()])
-    print("N star = ", N_star_max)
+    print("N star set to ", N_star_max)
     
     # Stack profiles into one long array
     r_norms = np.array([])
@@ -149,13 +156,14 @@ def eval_halo_pipe(field,
                    catalog_list,
                    ra_range, dec_range, 
                    wsid, password, 
-                   thresholds=np.logspace(-0.3,-3.,22),
+                   thresholds=np.logspace(-0.3,-3.3,22),
                    mag_range=[8.5,10.5],
                    pixel_scale=2.5,
                    dist_mask_min=100,
                    atalas_dir='./',
                    catalog_atals_dir=None,
-                   save_dir='./'):
+                   save_dir='./',
+                   plot=True):
     
     """ 
     Evaluate bright stellar halos.
@@ -194,6 +202,8 @@ def eval_halo_pipe(field,
         Path to the local ATLAS catalog files.
         If specified, ATALS catalog will be made locally.
         In the dir files are sorted by mag (e.g. 00_m_16) or dec.
+    plot: bool, optional
+        Whether to draw diagnostic plots.
     
     """
     
@@ -224,8 +234,10 @@ def eval_halo_pipe(field,
                                             table_atlas, 
                                             thresholds=thresholds,
                                             mag_range=mag_range,
-                                            dist_mask_min=dist_mask_min, 
-                                            pixel_scale=pixel_scale)
+                                            pixel_scale=pixel_scale,
+                                            N_source_min=3000,
+                                            dist_mask_min=dist_mask_min,
+                                            plot=plot)
     
     # Drop profiles bad flags, keep for the brigthest N_star
     # r_norms_ is MxNxK array, M:# of frames, N:max # of stars among frames, K:1 + # of thresholds
@@ -233,7 +245,8 @@ def eval_halo_pipe(field,
     filters = filters_[flags_==1]
     
     # Plot profiles
-    plot_profiles(r_norms, filters, contrasts, save_dir=save_dir, suffix='_'+field)
+    if plot:
+        plot_profiles(r_norms, filters, contrasts, save_dir=save_dir, suffix='_'+field)
     
     # Clustering pofiles
 #    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
@@ -243,8 +256,10 @@ def eval_halo_pipe(field,
     # In log unit
     labels = clustering_profiles_optimize(r_norms, filters, contrasts,
                                             log=True, eps_grid = np.arange(0.1,0.3,0.02),
-                                            save_dir=save_dir, field=field)
+                                            save_dir=save_dir,
+                                            field=field, plot=plot)
     
+    # Write the table with flags
     table = Table({'frame':hdu_list, 'filter':filters_, 'flag':flags_})
     table['label'] = -1 * np.ones_like(flags_)
     table['label'][flags_==1] = labels

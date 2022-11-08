@@ -128,8 +128,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
                               N_source_min=3000,
                               dist_mask_min=None,
                               pixel_scale=2.5,
-                              sep=5*u.arcsec,
-                              bkg_val=0):
+                              sep=5*u.arcsec):
     
     """ 
     Extract single curve of growth.
@@ -148,7 +147,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         Thresholds at x% of the saturation brightness.
     mag_range: list
         Range of magnitude of bright stars for measurement
-    N_source_min: int
+    N_source_min: int, default 3000
         Minimum number of detected sources required in the frame.
     sep: astropy.units.Quantity, default 5*u.arcsec
         Crossmatch seperation.
@@ -180,8 +179,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
     seg_map = fits.getdata(fn_seg)
     
     # Mask nan area
-    mask_nan = (data_full==0)
-    data_full[mask_nan] = np.nan
+    mask_nan = np.isnan(data_full)
     seg_map[mask_nan] = np.max(seg_map)+1
 
     # Read SExtractor catalog
@@ -189,8 +187,9 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
     
     # Skip if no enough detected sources
     cond = (tab_SE['MAG_AUTO']>=13) & (tab_SE['MAG_AUTO']<=18)
+    
     if len(tab_SE[cond])< N_source_min:
-        print('Too few sources.')
+        print('Too few sources in', fn)
         return None
     else:
         # Cross match SE catalog and ATLAS catalog
@@ -228,25 +227,34 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         
         # Measure profiles for N target stars
         r_profiles = np.array([])
+        
         for i in range(len(table_star)):
 
             # Make thumbnail image
             thumb = Thumb_Image(table_star[i], wcs)
             
             # Extract image and mask cutouts
-            thumb.extract_star(data_full, seg_map=seg_map, n_win=30, max_size=300)
+            thumb.extract_star(data_full, seg_map=seg_map,
+                               n_win=30, b_size=64, max_size=300)
             
-            # Skip if there is too many masked pixels around (>80%)
-            if np.sum(thumb.star_ma) > 0.8 * np.size(thumb.img_thumb):
+            # Skip if there is too many masked pixels around (>60%)
+            if np.sum(thumb.star_ma) > 0.6 * np.size(thumb.img_thumb):
                 return None
                 
+            # background
+            back = 0
+            #back = thumb.bkg
+            
             # Compute profiles
             r_rbin, z_rbin, r_satr = compute_radial_profile(thumb.img_thumb, 
                                                             cen=thumb.cen_star,
-                                                            back=0., #back=thumb.bkg,
-                                                            dr=0.2, seeing=2.5, sky_mean=0, 
+                                                            back=back, sky_mean=0, 
+                                                            dr=0.2, seeing=2.5,
                                                             pixel_scale=pixel_scale, 
                                                             core_undersample=False)
+            bkg_val = 0
+            bkg_val = np.median(back)
+            
             # Convert intensity to surface brightnesss
             I_rbin = Intensity2SB(z_rbin, BKG=bkg_val, ZP=ZP, pixel_scale=pixel_scale)
             

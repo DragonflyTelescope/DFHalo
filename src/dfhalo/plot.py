@@ -4,11 +4,9 @@ import matplotlib.pyplot as plt
 from astropy.stats import mad_std
 
 
-def plot_profiles(r_norms, filters, contrasts, save_dir='.', suffix=''):
+def plot_profiles(r_norms, filters, contrasts,
+                  save=True, save_dir='.', suffix=''):
     """ Display profiles """
-    
-    plt.figure(figsize=(10,8))
-    colors = plt.cm.jet(np.linspace(0.1, 0.9, len(r_norms)))
     
     # Profiles for G and R
     r_norms_G = r_norms[filters=='G']
@@ -25,6 +23,9 @@ def plot_profiles(r_norms, filters, contrasts, save_dir='.', suffix=''):
     r_norms_ = r_norms.copy()
     r_norms_[filters=='G']  = r_norms_G/ r_norms_G_star * r_norm_med
     r_norms_[filters=='R']  = r_norms_R/ r_norms_R_star * r_norm_med
+    
+    plt.figure(figsize=(10,8))
+    colors = plt.cm.jet(np.linspace(0.1, 0.9, len(r_norms)))
     
     for i, band in enumerate(filters):
         color = colors[i]
@@ -66,7 +67,8 @@ def plot_profiles(r_norms, filters, contrasts, save_dir='.', suffix=''):
     plt.xlabel('Contrasts', fontsize=18)
     plt.ylabel('R$_c$ / R$_0$', fontsize=18)
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f'profiles{suffix}.png'))
+    if save:
+        plt.savefig(os.path.join(save_dir, f'profiles{suffix}.png'))
     plt.show()
     
     plt.figure()
@@ -80,7 +82,8 @@ def plot_profiles(r_norms, filters, contrasts, save_dir='.', suffix=''):
     plt.xscale('log')
     plt.grid()
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f'dispersion{suffix}.png'))
+    if save:
+        plt.savefig(os.path.join(save_dir, f'dispersion{suffix}.png'))
     plt.show()
     
     

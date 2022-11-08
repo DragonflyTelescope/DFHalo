@@ -3,7 +3,9 @@ import glob
 import math
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 
+from scipy.ndimage import binary_dilation
 from astropy.stats import sigma_clip, SigmaClip
 from astropy.wcs import WCS
 from astropy.table import Table, vstack
@@ -12,6 +14,7 @@ from photutils import Background2D, SExtractorBackground
 from photutils import detect_sources, deblend_sources
 from photutils import CircularAnnulus
 from photutils.segmentation import SegmentationImage
+
 
 DF_pixel_scale = 2.5
 
@@ -127,11 +130,6 @@ def make_atlas_catalog(ra_range,
     
     return table_atlas
     
-def get_string_number(number):
-    """ Get filled string of a number """
-    ood = int(np.log10(number))
-    string = ''.join([str(number // 10**n % 10) for n in reversed(range(ood+1))])
-    return string
 
 def calculate_ra_dec_range(header):
     """ Calculate RA and Dec range from the wcs of header. """
@@ -159,6 +157,9 @@ def measure_dist_to_edge(table, mask_area,
     """
     Measure distance of each source to the edge of the mask.
     Note photutils is 0-based and SExtractor is 1-based.
+    
+    table: astropy Table
+    mask_area: mask map (1: masked)
 
     """
 
@@ -178,7 +179,8 @@ def measure_dist_to_edge(table, mask_area,
         X_edge = np.min([X_obj-X_data_min, X_data_max-X_obj])
         Y_edge = np.min([Y_obj-Y_data_min, Y_data_max-Y_obj])
         dist_mask[i] = np.min([X_edge, Y_edge])
-
+    
+    print(dist_mask)
     return dist_mask
     
     
@@ -226,7 +228,7 @@ class Thumb_Image:
     def make_star_thumb(self,
                         image, seg_map=None,
                         n_win=20, seeing=2.5, max_size=200,
-                        origin=1, verbose=False):
+                        n_dilation=3, origin=1, verbose=False):
         """
         Crop the image and segmentation map into thumbnails.
 
@@ -244,6 +246,8 @@ class Thumb_Image:
             Max thumb size in pixel
         origin : 1 or 0, optional, default 1
             Position of the first pixel. origin=1 for SE convention.
+        n_dilation : int, optional, default 3
+            Number of iterations to dilate the mask map.
             
         """
 
@@ -258,7 +262,7 @@ class Thumb_Image:
         # Calculate boundary
         X_min, X_max = max(origin, X_c - win_size), min(image.shape[1], X_c + win_size)
         Y_min, Y_max = max(origin, Y_c - win_size), min(image.shape[0], Y_c + win_size)
-        x_min, y_min = coord_Im2Array(X_min, Y_min, origin) # py convention
+        x_min, y_min = coord_Im2Array(X_min, Y_min, origin) # python convention
         x_max, y_max = coord_Im2Array(X_max, Y_max, origin)
 
         X_WORLD, Y_WORLD = self.row["X_WORLD"], self.row["Y_WORLD"]
@@ -277,15 +281,19 @@ class Thumb_Image:
             self.mask_thumb = np.zeros_like(self.img_thumb, dtype=bool)
         else:
             self.seg_thumb = seg_map[x_min:x_max, y_min:y_max]
-            self.mask_thumb = (self.seg_thumb!=0) # mask sources
+            self.mask_thumb = (self.seg_thumb!=0) # mask all sources
 
-        # Centroid position in the cutout (0-based py convention)
-        #self.cen_star = np.array([X_c - X_min, Y_c - Y_min])
+        # Centroid position in the cutout (0-based python convention)
         self.cen_star = np.array([X_c - y_min - origin, Y_c - x_min - origin])
+        
+        # Dilation on mask map
+        if n_dilation is not None:
+            self.mask_thumb = binary_dilation(self.mask_thumb, iterations=n_dilation)
 
     def extract_star(self, image,
                      seg_map=None,
                      sn_thre=2.5,
+                     b_size=100,
                      display_bkg=False,
                      display=False, **kwargs):
         
@@ -302,6 +310,9 @@ class Thumb_Image:
             Full segmentation map
         sn_thre : float, optional, default 2.5
             SNR threshold used for detection if seg_map is None
+        b_size: float, optional, default 100
+            Background size in pix for extract local background of thumbnail.
+            If None, set around 1/5 of the thumbnail.
         
         """
         # Make thumbnail image
@@ -313,7 +324,12 @@ class Thumb_Image:
         
         # Measure local background, use constant if the thumbnail is small
         shape = img_thumb.shape
-        b_size = round(min(shape)//5/25)*25
+        if b_size is None:
+            b_size = round(min(shape)//5/25)*25
+            
+        plt.figure()
+        plt.imshow(mask_thumb)
+        plt.show()
         
         if shape[0] >= b_size:
             back, back_rms = background_extraction(img_thumb, mask=mask_thumb, b_size=b_size)
