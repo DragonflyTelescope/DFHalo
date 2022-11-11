@@ -19,6 +19,8 @@ from photutils.segmentation import SegmentationImage
 
 DF_pixel_scale = 2.5
 
+### ATLAS catlof related ###
+
 def query_atlas_catalog(field,
                         ra_range,
                         dec_range,
@@ -58,7 +60,7 @@ def query_atlas_catalog(field,
     
     # Check if a queried catalog already existed
     if not os.path.exists(fname_atlas):
-    
+        print("Submit casjob to query ATLAS catalog.")
         # Check and delete previous queries
         catalog_match = os.path.join(atalas_dir, 'atlas_*.csv')
         for fn in glob.glob(catalog_match):
@@ -79,6 +81,8 @@ def query_atlas_catalog(field,
         
         # Rename and read the queried catalog
         shutil.copy(fname_query, fname_atlas)
+    else:
+        print(f"ATLAS catalog found as {fname_atlas}.")
     
     # Load table
     table_atlas = Table.read(fname_atlas, format='csv')
@@ -146,7 +150,55 @@ def make_atlas_catalog(ra_range,
     table_atlas = table_atlas[table_atlas['g']<=mag_limit]
     
     return table_atlas
-    
+
+
+### Fitting related ###
+def fit_profile_slopes(r_profiles, contrasts, contrast_range=[200, 2000]):
+    """
+    Fit a 1D linear model to the group of curves of growths.
+
+    Parameters
+    ----------
+    r_profiles: 2d np.array
+        Curves of Growth of an individual frame (axis 0: star, axis 1: radius)
+    contrasts: np.array
+        Contrasts at 1/x% of the saturation brightness.
+    contrast_range: [float , float]
+        Range of contrast for fitting 1D linear model.
+
+    Returns
+    -------
+    slopes: 1D array
+        Slopes of profiles sorted by stars
+
+    slope_med: float
+        Slope of the median profile
+        
+    """
+
+    N_star = r_profiles.shape[0]
+    slopes = np.zeros(N_star)
+
+    # Range of fitting
+    fit_range = (contrasts>=contrast_range[0])&(contrasts<=contrast_range[1])
+
+    for j in range(N_star):
+        r_ = r_profiles[j]  # first value is saturation radius
+
+        # Fit a 1D linear model between threshold_range
+        slope, intcp =  np.polyfit(np.log10(contrasts[fit_range]), np.log10(r_[fit_range]), deg=1)
+        slopes[j] = slope
+
+    # Median profile
+    r_profiles_med = np.nanmedian(r_profiles, axis=0)
+
+    # Fit a 1D linear for the median profile
+    slope_med, intcp_med = np.polyfit(np.log10(contrasts[fit_range]), np.log10(r_profiles_med[fit_range]), deg=1)
+
+    return slopes, slope_med
+
+
+### Miscellaneous calculation ###
 
 def calculate_ra_dec_range(header):
     """ Calculate RA and Dec range from the wcs of header. """
@@ -200,6 +252,8 @@ def measure_dist_to_edge(table, mask_area,
     return dist_mask
     
     
+### Backgound related ###
+    
 def background_extraction(field, mask=None, return_rms=True,
                       b_size=64, f_size=3, n_iter=5, **kwargs):
     """ Extract background & rms image using SE estimator with mask """
@@ -225,6 +279,7 @@ def background_extraction(field, mask=None, return_rms=True,
     else:
         return back
 
+### Thumbnail related ###
 
 class Thumb_Image:
     """

@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 from astropy.stats import mad_std
 
 
-def plot_profiles(r_norms, filters, contrasts,
-                  save=True, save_dir='.', suffix=''):
+def plot_profiles(r_norms, filters, contrasts, flags=None,
+                  save=False, save_dir='.', suffix=''):
     """ Display profiles """
     
     # Profiles for G and R
@@ -35,11 +35,17 @@ def plot_profiles(r_norms, filters, contrasts,
 
         # Slightly offset the profiles
         dx = 1 + np.random.random(1) * 0.05
-
-        if band=='R':
-            color = 'firebrick'
-        elif band=='G':
-            color = 'seagreen'
+        
+        if flags is None:
+            if band=='R':
+                color = 'firebrick'
+            elif band=='G':
+                color = 'seagreen'
+        else:
+            if flags[i] == 0:
+                color = 'orange' # bad halos
+            else:
+                color = 'steelblue' # good halos
 
         for j in range(len(r_norm_i)):
             # j-th star

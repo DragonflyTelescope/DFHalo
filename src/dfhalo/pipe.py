@@ -22,6 +22,9 @@ def eval_halo_pipe(field,
                    thresholds=np.logspace(-0.3,-3.3,22),
                    mag_range=[8.5,10.5],
                    pixel_scale=2.5,
+                   contrast_range=[200, 1000],
+                   do_clustering=True,
+                   eps_grid=np.arange(0.1,0.3,0.02),
                    dist_mask_min=100,
                    atalas_dir='./',
                    catalog_atals_dir=None,
@@ -55,8 +58,14 @@ def eval_halo_pipe(field,
         Thresholds at x% of the saturation brightness.
     mag_range: list
         Range of magnitude of bright stars for measurement
-    pixel_scale : float
+    pixel_scale: float
         Pixel scale in arcsec/pixel
+    contrast_range: [float , float]
+        Range of contrast for fitting 1D linear model.
+    do_clustering: bool, optional
+        If True, do clustering on the profiles to identify outliers.
+    eps_grid: 1d array, optional
+        Input grid of eps for parameter tuning.
     dist_mask_min: int, optional, default None
         Minimum distance in pix to the field edges mask.
     atalas_dir: str, optional
@@ -104,28 +113,59 @@ def eval_halo_pipe(field,
     r_norms = r_norms_[flags_==1][:,:,1:]   # the first value is saturated r0
     filters = filters_[flags_==1]
     
-    # Plot profiles
     if plot:
         plot_profiles(r_norms, filters, contrasts,
                       save=True, save_dir=save_dir, suffix='_'+field)
+                      
+    if do_clustering:
+        # Clustering in log space
+        labels = clustering_profiles_optimize(r_norms, filters, contrasts,
+                                              log=True, eps_grid=eps_grid,
+                                              field=field, plot=plot,
+                                              save_plot=True, save_dir=save_dir)
+
+        # Clustering pofiles in linear space
+#        labels = clustering_profiles_optimize(r_norms, filters, contrasts,
+#                                              log=False, eps_grid = np.arange(0.2,0.65,0.05),
+#                                              field=field, plot=plot,
+#                                              save_plot=True, save_dir=save_dir)
     
-    # Clustering pofiles
-#    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
-#                                          log=False, eps_grid = np.arange(0.2,0.65,0.05),
-#                                          save_dir=save_dir, field=field)
-                            
-    # Clustering in log space
-    eps_grid = np.arange(0.1,0.3,0.02)
-    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
-                                            log=True, eps_grid=eps_grid,
-                                            field=field, plot=plot,
-                                            save_plot=True, save_dir=save_dir)
+    # Fit a 1D linear model to outskirts
+    slopes_list = np.array([])
+    slope_med_list = np.array([])
+    for r_norm in r_norms:
+        first_col = r_norm[:,0]
+        r_ = r_norm[~np.isnan(first_col)]
+        if len(r_) == 0:
+            slope, slope_med = 99, 99
+        else:
+            slopes, slope_med = fit_profile_slopes(r_, contrasts, contrast_range)
+        slopes_list = np.append(slopes_list, slopes)
+        slope_med_list = np.append(slope_med_list, slope_med)
     
-    # Write the table with flags
+    # Show histogram of slopes
+    plt.hist(slope_med_list,alpha=0.5)
+    plt.xlabel("Slope med")
+    plt.show()
+    
+    # Make the table with flags, labels, and slopes
     table = Table({'frame':hdu_list, 'filter':filters_, 'flag':flags_})
-    table['label'] = -1 * np.ones_like(flags_)
-    table['label'][flags_==1] = labels
+    table['slope'] = 99.0  # default value 99
+    table['slope'][flags_==1] = slope_med_list
+    if do_clustering:
+        table['label'] = -1  # default value -1
+        table['label'][flags_==1] = labels
+    else:
+        table['label'] = 99 * np.ones_like(hdu_list)
     
+    # Append comments to the table
+    str_contrs_range = ", ".join(map(str, contrast_range))
+    comments = ["flags: 1: good. 0: bad profule measurement.",
+                "slope measured between contrast [{:}].".format(str_contrs_range),
+                "label: DBSCAN clustering labels. -1: bad/outlier. 99: no clustering."]
+    table.meta['comments'] = comments
+    
+    # Write to disk
     table.write(os.path.join(save_dir, f'{field}_halo.txt'), format='ascii', overwrite=True)
     
     return table, r_norms, filters
