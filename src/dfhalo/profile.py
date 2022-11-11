@@ -217,7 +217,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         else:
             # measure distance to masked area
             dist_mask = measure_dist_to_edge(tab_SE_match, mask_nan)
-            table_star = tab_SE_match[dist_mask>dist_mask_min]
+            table_star = tab_SE_match[dist_mask>=dist_mask_min]
         
         # Do not use stars with bad photometry
         table_star = table_star[table_star['FLAGS'] <=8]
@@ -235,25 +235,27 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
             
             # Extract image and mask cutouts
             thumb.extract_star(data_full, seg_map=seg_map,
-                               n_win=30, b_size=64, max_size=300)
+                               n_win=30, b_size=50, max_size=300)
             
             # Skip if there is too many masked pixels around (>60%)
-            if np.sum(thumb.star_ma) > 0.6 * np.size(thumb.img_thumb):
+            if np.sum(thumb.star_ma) > 0.7 * np.size(thumb.img_thumb):
                 return None
                 
-            # background
-            back = 0
-            #back = thumb.bkg
+            # center, 2D local background and mask
+            cen = thumb.cen_star
+            back = thumb.bkg
+            mask = thumb.star_ma
             
             # Compute profiles
             r_rbin, z_rbin, r_satr = compute_radial_profile(thumb.img_thumb, 
-                                                            cen=thumb.cen_star,
+                                                            cen=cen, mask=mask,
                                                             back=back, sky_mean=0, 
                                                             dr=0.2, seeing=2.5,
                                                             pixel_scale=pixel_scale, 
                                                             core_undersample=False)
-            bkg_val = 0
-            bkg_val = np.median(back)
+            # Background value with all sources masked
+            #bkg_val = 0
+            bkg_val = np.median(back[~thumb.mask_thumb])
             
             # Convert intensity to surface brightnesss
             I_rbin = Intensity2SB(z_rbin, BKG=bkg_val, ZP=ZP, pixel_scale=pixel_scale)

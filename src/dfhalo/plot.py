@@ -34,25 +34,25 @@ def plot_profiles(r_norms, filters, contrasts,
         r_norm_i = r_norms_[i]
 
         # Slightly offset the profiles
-        dx = 1 + np.random.random(1) * 0.1
+        dx = 1 + np.random.random(1) * 0.05
 
         if band=='R':
-            color = 'firebrick' 
+            color = 'firebrick'
         elif band=='G':
             color = 'seagreen'
 
         for j in range(len(r_norm_i)):
             # j-th star
-            plt.plot(contrasts * dx, r_norm_i[j], 'o', ms=3, alpha=0.05, color=color)
+            plt.plot(contrasts * dx, r_norm_i[j], 'o', ms=1, alpha=0.05, color=color)
         
         # stars averaged
         r_norm_i_med = np.nanmedian(r_norm_i, axis=0)
         
-        yerr = np.abs(r_norm_i_med - np.nanquantile(r_norm_i, [0.16,0.84], axis=0))
+        #yerr = np.abs(r_norm_i_med - np.nanquantile(r_norm_i, [0.16,0.84], axis=0))
         plt.plot(contrasts * dx, r_norm_i_med, '-s',
-                 ms=5, mec='k', lw=2, alpha=0.2, color=color, zorder=2)
-        plt.errorbar(contrasts * dx, r_norm_i_med,
-                     yerr=yerr, alpha=0.1, color=color, zorder=1)
+                 ms=3, mec='k', lw=2, alpha=0.4, color=color, zorder=2)
+#        plt.errorbar(contrasts * dx, r_norm_i_med,
+#                     yerr=yerr, alpha=0.1, color=color, zorder=1)
         plt.text(contrasts[-1] * dx * 1.2, np.nanmedian(r_norm_i[:,-1]), i, fontsize=8)
     
     # Median corrected profile among frames (averaging stars)
@@ -89,7 +89,8 @@ def plot_profiles(r_norms, filters, contrasts,
     
 def plot_profile_clustering(X, labels, contrasts, 
                             norm=True, log=False,
-                            save_dir='.', suffix=''):
+                            save=True, save_dir='.',
+                            suffix=''):
     """ Display clustering result of profiles. """
     
     unique_labels = set(labels)
@@ -121,6 +122,7 @@ def plot_profile_clustering(X, labels, contrasts,
     
     plt.title("Estimated number of clusters: %d" % n_clusters_)
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f'clustering_profiles{suffix}.png'))
+    if save:
+        plt.savefig(os.path.join(save_dir, f'clustering_profiles{suffix}.png'))
     plt.show()
     

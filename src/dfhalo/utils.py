@@ -18,7 +18,8 @@ from photutils.segmentation import SegmentationImage
 
 DF_pixel_scale = 2.5
 
-def query_atlas_catalog(ra_range,
+def query_atlas_catalog(field,
+                        ra_range,
                         dec_range,
                         wsid,
                         password,
@@ -31,6 +32,8 @@ def query_atlas_catalog(ra_range,
     
     Parameters
     ----------
+    Field: str
+        Field name (identifier).
     ra_range: tuple or list
         Range of RA
     dec_range: tuple or list
@@ -44,29 +47,42 @@ def query_atlas_catalog(ra_range,
     
     Returns
     -------
-    fname_query: str
-        Name of the queried catalog.
+    table_atlas: astropy.Table
+        Crossmatched ATLAS table.
         
     """
     from .atlas import query_atlas
     
-    catalog_match = os.path.join(atalas_dir, 'atlas_*.csv')
+    fname_atlas = os.path.join(atalas_dir, f'{field}_atlas.csv')
     
-    # Check and delete previous queries
-    for fn in glob.glob(catalog_match):
-        os.remove(fn)
+    # Check if a queried catalog already existed
+    if not os.path.exists(fname_atlas):
+    
+        # Check and delete previous queries
+        catalog_match = os.path.join(atalas_dir, 'atlas_*.csv')
+        for fn in glob.glob(catalog_match):
+            os.remove(fn)
 
-    # Query the ATLAS catalog, sleep until finished
-    out = query_atlas(ra_range, dec_range,
-                      wsid=wsid, password=password,
-                      mag_limit=mag_limit)
-    while len(glob.glob(catalog_match))==0:
-        time.sleep(0.1)
+        # Query the ATLAS catalog, sleep until finished
+        out = query_atlas(ra_range, dec_range,
+                          wsid=wsid, password=password,
+                          mag_limit=mag_limit)
+        while len(glob.glob(catalog_match))==0:
+            time.sleep(0.1)
 
-    # Read and rename the queried table with field name
-    fname_query = glob.glob(catalog_match)[0]
+        # Read and rename the queried table with field name
+        fname_query = glob.glob(catalog_match)[0]
+        
+        # Sleep a few seconds for query
+        time.sleep(5)
+        
+        # Rename and read the queried catalog
+        shutil.copy(fname_query, fname_atlas)
+    
+    # Load table
+    table_atlas = Table.read(fname_atlas, format='csv')
 
-    return fname_query
+    return table_atlas
     
 def make_atlas_catalog(ra_range,
                        dec_range,
@@ -153,7 +169,7 @@ def Intensity2SB(Intensity, BKG, ZP, pixel_scale=DF_pixel_scale):
     return I_SB
  
 def measure_dist_to_edge(table, mask_area,
-                     Xname="X_IMAGE", Yname="Y_IMAGE", origin=0):
+                        Xname="X_IMAGE", Yname="Y_IMAGE", origin=0):
     """
     Measure distance of each source to the edge of the mask.
     Note photutils is 0-based and SExtractor is 1-based.
@@ -180,7 +196,6 @@ def measure_dist_to_edge(table, mask_area,
         Y_edge = np.min([Y_obj-Y_data_min, Y_data_max-Y_obj])
         dist_mask[i] = np.min([X_edge, Y_edge])
     
-    print(dist_mask)
     return dist_mask
     
     
@@ -228,7 +243,7 @@ class Thumb_Image:
     def make_star_thumb(self,
                         image, seg_map=None,
                         n_win=20, seeing=2.5, max_size=200,
-                        n_dilation=3, origin=1, verbose=False):
+                        origin=1, verbose=False):
         """
         Crop the image and segmentation map into thumbnails.
 
@@ -246,8 +261,6 @@ class Thumb_Image:
             Max thumb size in pixel
         origin : 1 or 0, optional, default 1
             Position of the first pixel. origin=1 for SE convention.
-        n_dilation : int, optional, default 3
-            Number of iterations to dilate the mask map.
             
         """
 
@@ -286,14 +299,11 @@ class Thumb_Image:
         # Centroid position in the cutout (0-based python convention)
         self.cen_star = np.array([X_c - y_min - origin, Y_c - x_min - origin])
         
-        # Dilation on mask map
-        if n_dilation is not None:
-            self.mask_thumb = binary_dilation(self.mask_thumb, iterations=n_dilation)
-
     def extract_star(self, image,
                      seg_map=None,
                      sn_thre=2.5,
                      b_size=100,
+                     n_dilation=3,
                      display_bkg=False,
                      display=False, **kwargs):
         
@@ -313,6 +323,8 @@ class Thumb_Image:
         b_size: float, optional, default 100
             Background size in pix for extract local background of thumbnail.
             If None, set around 1/5 of the thumbnail.
+        n_dilation : int, optional, default 3
+            Number of iterations to dilate the mask map.
         
         """
         # Make thumbnail image
@@ -326,10 +338,6 @@ class Thumb_Image:
         shape = img_thumb.shape
         if b_size is None:
             b_size = round(min(shape)//5/25)*25
-            
-        plt.figure()
-        plt.imshow(mask_thumb)
-        plt.show()
         
         if shape[0] >= b_size:
             back, back_rms = background_extraction(img_thumb, mask=mask_thumb, b_size=b_size)
@@ -356,7 +364,11 @@ class Thumb_Image:
         star_label = segm_deb.data[round(self.cen_star[1]), round(self.cen_star[0])]
         star_ma = ~((segm_deb.data==star_label) | (segm_deb.data==0))
         self.star_ma = star_ma
-            
+        
+        # Dilation on mask map
+        if n_dilation is not None:
+            self.mask_thumb = binary_dilation(mask_thumb, iterations=n_dilation)
+            self.star_ma = binary_dilation(star_ma, iterations=n_dilation)
             
     def compute_Rnorm(self, R=12, **kwargs):
         """

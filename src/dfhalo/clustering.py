@@ -10,7 +10,8 @@ from .plot import plot_profile_clustering
 def clustering_profiles_optimize(r_norms, filters, contrasts,
                                  eps_grid=np.arange(0.1,0.3,0.02),
                                  N_min_sample=5, log=True,
-                                 field='', save_dir='.', plot=True):
+                                 field='', plot=True,
+                                 save_plot=True, save_dir='.'):
     
     """
     Do clustering on profiles with optimized hyperparameter eps.
@@ -31,8 +32,12 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
     log: bool, default True
         Whether to clustering profiles in log space.
     field: str
-        Field name
-    
+        Field name (identifier).
+    plot: bool
+        Whether to plot diagnostic figures.
+    save_plot: bool
+        Whether to save plot
+        
     Returns
     -------
     labels: 1d array
@@ -97,19 +102,24 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
     
     labels = clustering_data(X, contrasts, eps=eps_opt,
                              N_min_sample=N_min_sample,
-                             log=log, plot=plot)
+                             log=log, plot=plot,
+                             save_plot=save_plot)
     
     if plot:
         plot_profile_clustering(X_, labels, contrasts,
                                 norm=False, log=False,
-                                save_dir=save_dir, suffix='_'+field)
+                                save=save_plot,
+                                save_dir=save_dir,
+                                suffix='_'+field)
                                 
     return labels
 
 
 def clustering_data(X, contrasts,
-                    eps=0.2, log=True, N_min_sample=5,
-                    save_dir='.', field='', plot=True):
+                    N_min_sample=5,
+                    eps=0.2, log=True,
+                    field='', plot=True,
+                    save_plot=True, save_dir='.'):
     
     """
     Do DBSCAN clustering on normalized profiles.
@@ -123,10 +133,14 @@ def clustering_data(X, contrasts,
         Contrasts (1/threshold) corresponding at which r_norms are measured.
     eps: float, default 0.5
         eps in DBSCAN clustering.
-    log: bool, default True
-        Whether to clustering profiles in log space.
     N_min_sample: int, default 5
         Minimum number of samples in a single cluster in DBSCAN clustering.
+    log: bool, default True
+        Whether to clustering profiles in log space.
+    field: str
+        Field name (identifier).
+    save_plot: bool
+        Whether to save plot
         
     Returns
     -------
@@ -146,6 +160,8 @@ def clustering_data(X, contrasts,
     
     if plot:
         plot_profile_clustering(X, labels, contrasts,
-                                norm=True, log=log, save_dir=save_dir,
+                                norm=True, log=log,
+                                save=save_plot,
+                                save_dir=save_dir,
                                 suffix=f'_normed_{field}')
     return labels

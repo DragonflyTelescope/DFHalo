@@ -13,6 +13,124 @@ from .clustering import *
 from .utils import *
 from .plot import *
 
+def eval_halo_pipe(field,
+                   hdu_list,
+                   segm_list,
+                   catalog_list,
+                   ra_range, dec_range,
+                   wsid, password,
+                   thresholds=np.logspace(-0.3,-3.3,22),
+                   mag_range=[8.5,10.5],
+                   pixel_scale=2.5,
+                   dist_mask_min=100,
+                   atalas_dir='./',
+                   catalog_atals_dir=None,
+                   save_dir='./',
+                   plot=True):
+    
+    """
+    Evaluate bright stellar halos.
+    
+    A list of corresponding segementation maps and SE catalogs are required.
+    
+    Parameters
+    ----------
+    field: str
+        Field name (identifier).
+    hdu_list: list
+        Path list of frames.
+    segm_list: list
+        Path list of segementation maps.
+    catalog_list: list
+        Path list of SExtractor catalogs.
+    ra_range: tuple or list
+        Range of RA
+    dec_range: tuple or list
+        Range of dec
+    wsid: str
+        casjob WSID
+    password: str
+        casjob password
+    thresholds: np.array
+        Thresholds at x% of the saturation brightness.
+    mag_range: list
+        Range of magnitude of bright stars for measurement
+    pixel_scale : float
+        Pixel scale in arcsec/pixel
+    dist_mask_min: int, optional, default None
+        Minimum distance in pix to the field edges mask.
+    atalas_dir: str, optional
+        Path to store the ATLAS query file.
+    catalog_atals_dir: str, optional
+        Path to the local ATLAS catalog files.
+        If specified, ATALS catalog will be made locally.
+        In the dir files are sorted by mag (e.g. 00_m_16) or dec.
+    plot: bool, optional
+        Whether to draw diagnostic plots.
+    
+    """
+    
+    print(f"Running halo evaluation for {field}.")
+    
+    N_frame = len(hdu_list)
+    
+    # Get filter names
+    filters_ = np.array([fits.getheader(fn)["FILTER"] for fn in hdu_list])
+    
+    if catalog_atals_dir is None:
+        # Query ATLAS catalog
+        table_atlas = query_atlas_catalog(field, ra_range, dec_range, wsid, password, atalas_dir, mag_limit=12)
+    else:
+        # Build ATLAS catalog from local csv files
+        table_atlas = make_atlas_catalog(ra_range, dec_range, mag_limit=12, catalog_dir=catalog_atals_dir)
+    
+    # Contrasts from thresholds
+    contrasts = 1/thresholds
+    
+    # Extract curves of growth
+    r_norms_, flags_ = extract_profile_pipe(hdu_list,
+                                            segm_list,
+                                            catalog_list,
+                                            table_atlas,
+                                            thresholds=thresholds,
+                                            mag_range=mag_range,
+                                            pixel_scale=pixel_scale,
+                                            N_source_min=3000,
+                                            dist_mask_min=dist_mask_min,
+                                            plot=plot)
+    
+    # Drop profiles bad flags, keep for the brigthest N_star
+    # r_norms_ is MxNxK array, M:# of frames, N:max # of stars among frames, K:1 + # of thresholds
+    r_norms = r_norms_[flags_==1][:,:,1:]   # the first value is saturated r0
+    filters = filters_[flags_==1]
+    
+    # Plot profiles
+    if plot:
+        plot_profiles(r_norms, filters, contrasts,
+                      save=True, save_dir=save_dir, suffix='_'+field)
+    
+    # Clustering pofiles
+#    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
+#                                          log=False, eps_grid = np.arange(0.2,0.65,0.05),
+#                                          save_dir=save_dir, field=field)
+                            
+    # Clustering in log space
+    eps_grid = np.arange(0.1,0.3,0.02)
+    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
+                                            log=True, eps_grid=eps_grid,
+                                            field=field, plot=plot,
+                                            save_plot=True, save_dir=save_dir)
+    
+    # Write the table with flags
+    table = Table({'frame':hdu_list, 'filter':filters_, 'flag':flags_})
+    table['label'] = -1 * np.ones_like(flags_)
+    table['label'][flags_==1] = labels
+    
+    table.write(os.path.join(save_dir, f'{field}_halo.txt'), format='ascii', overwrite=True)
+    
+    return table, r_norms, filters
+    
+    
 def extract_profile_pipe(hdu_list, segm_list, 
                          catalog_list, table_atlas, 
                          thresholds=np.logspace(-0.3,-3.,22), 
@@ -93,6 +211,8 @@ def extract_profile_pipe(hdu_list, segm_list,
     profiles = {}
     flags = np.zeros_like(hdu_list, dtype=int)
     
+    print("Remove sources < {:d} pixel to the edges".format(dist_mask_min))
+    
     for i, (filt, hdu_path, segm_path, catalog_path) in tqdm(enumerate(zip(filters, hdu_list, segm_list, catalog_list))):
         name = os.path.basename(hdu_path).split('_light')[0]
         
@@ -148,122 +268,3 @@ def extract_profile_pipe(hdu_list, segm_list,
         r_norms = np.vstack([r_norms, [r_norm]]) if i>0 else [r_norm]
         
     return r_norms, flags
-
-
-def eval_halo_pipe(field,
-                   hdu_list,
-                   segm_list,
-                   catalog_list,
-                   ra_range, dec_range, 
-                   wsid, password, 
-                   thresholds=np.logspace(-0.3,-3.3,22),
-                   mag_range=[8.5,10.5],
-                   pixel_scale=2.5,
-                   dist_mask_min=100,
-                   atalas_dir='./',
-                   catalog_atals_dir=None,
-                   save_dir='./',
-                   plot=True):
-    
-    """ 
-    Evaluate bright stellar halos.
-    
-    A list of corresponding segementation maps and SE catalogs are required.
-    
-    Parameters
-    ----------
-    field: str
-        Field name.
-    hdu_list: list
-        Path list of frames.
-    segm_list: list
-        Path list of segementation maps.
-    catalog_list: list
-        Path list of SExtractor catalogs.
-    ra_range: tuple or list
-        Range of RA
-    dec_range: tuple or list
-        Range of dec
-    wsid: str
-        casjob WSID
-    password: str
-        casjob password
-    thresholds: np.array
-        Thresholds at x% of the saturation brightness.
-    mag_range: list
-        Range of magnitude of bright stars for measurement
-    pixel_scale : float
-        Pixel scale in arcsec/pixel
-    dist_mask_min: int, optional, default None
-        Minimum distance to the field edges mask.
-    atalas_dir: str, optional
-        Path to store the ATLAS query file.
-    catalog_atals_dir: str, optional
-        Path to the local ATLAS catalog files.
-        If specified, ATALS catalog will be made locally.
-        In the dir files are sorted by mag (e.g. 00_m_16) or dec.
-    plot: bool, optional
-        Whether to draw diagnostic plots.
-    
-    """
-    
-    N_frame = len(hdu_list)
-    
-    # Get filter names
-    filters_ = np.array([fits.getheader(fn)["FILTER"] for fn in hdu_list])   
-    
-    if catalog_atals_dir is None:
-        # Query ATLAS catalog and sleep a while for its finish
-        fname_query = query_atlas_catalog(ra_range, dec_range, wsid, password, atalas_dir, mag_limit=12)
-        time.sleep(5)
-        
-        # Rename and read the queried catalog
-        fname_atlas = os.path.join(atalas_dir, f'{field}_atlas.csv')
-        shutil.copy(fname_query, fname_atlas)
-        table_atlas = Table.read(fname_atlas, format='csv')
-    else:
-        table_atlas = make_atlas_catalog(ra_range, dec_range, mag_limit=12, catalog_dir=catalog_atals_dir)
-    
-    # Contrasts from thresholds
-    contrasts = 1/thresholds
-    
-    # Extract curves of growth
-    r_norms_, flags_ = extract_profile_pipe(hdu_list,
-                                            segm_list, 
-                                            catalog_list, 
-                                            table_atlas, 
-                                            thresholds=thresholds,
-                                            mag_range=mag_range,
-                                            pixel_scale=pixel_scale,
-                                            N_source_min=3000,
-                                            dist_mask_min=dist_mask_min,
-                                            plot=plot)
-    
-    # Drop profiles bad flags, keep for the brigthest N_star
-    # r_norms_ is MxNxK array, M:# of frames, N:max # of stars among frames, K:1 + # of thresholds
-    r_norms = r_norms_[flags_==1][:,:,1:]   # the first value is saturated r0
-    filters = filters_[flags_==1]
-    
-    # Plot profiles
-    if plot:
-        plot_profiles(r_norms, filters, contrasts, save_dir=save_dir, suffix='_'+field)
-    
-    # Clustering pofiles
-#    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
-#                                          log=False, eps_grid = np.arange(0.2,0.65,0.05),
-#                                          save_dir=save_dir, field=field)
-                            
-    # In log unit
-    labels = clustering_profiles_optimize(r_norms, filters, contrasts,
-                                            log=True, eps_grid = np.arange(0.1,0.3,0.02),
-                                            save_dir=save_dir,
-                                            field=field, plot=plot)
-    
-    # Write the table with flags
-    table = Table({'frame':hdu_list, 'filter':filters_, 'flag':flags_})
-    table['label'] = -1 * np.ones_like(flags_)
-    table['label'][flags_==1] = labels
-    
-    table.write(os.path.join(save_dir, f'{field}_halo.txt'), format='ascii', overwrite=True)
-    
-    return table, r_norms, filters
