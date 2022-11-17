@@ -37,6 +37,8 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
         Whether to plot diagnostic figures.
     save_plot: bool
         Whether to save plot
+    save_dir: str, optional
+        Directory to save plots and table. Default current path.
         
     Returns
     -------

@@ -18,7 +18,7 @@ def eval_halo_pipe(field,
                    segm_list,
                    catalog_list,
                    ra_range, dec_range,
-                   wsid, password,
+                   wsid=None, password=None,
                    thresholds=np.logspace(-0.3,-3.3,22),
                    mag_range=[8.5,10.5],
                    pixel_scale=2.5,
@@ -50,10 +50,12 @@ def eval_halo_pipe(field,
         Range of RA
     dec_range: tuple or list
         Range of dec
-    wsid: str
+    wsid: str, optional
         casjob WSID
-    password: str
+        If None, catalog_atals_dir is required to build catalog.
+    password: str, optional
         casjob password
+        If None, catalog_atals_dir is required to build catalog.
     thresholds: np.array
         Thresholds at x% of the saturation brightness.
     mag_range: list
@@ -74,10 +76,17 @@ def eval_halo_pipe(field,
         Path to the local ATLAS catalog files.
         If specified, ATALS catalog will be made locally.
         In the dir files are sorted by mag (e.g. 00_m_16) or dec.
+    save_dir: str, optional
+        Directory to save plots and table. If None, no save.
     plot: bool, optional
         Whether to draw diagnostic plots.
     
     """
+    
+    if save_dir is None:
+        save = True
+    else:
+        save = False
     
     print(f"Running halo evaluation for {field}.")
     
@@ -87,6 +96,8 @@ def eval_halo_pipe(field,
     filters_ = np.array([fits.getheader(fn)["FILTER"] for fn in hdu_list])
     
     if catalog_atals_dir is None:
+        if (wsid is None) | (password is None):
+            print("Casjob credentials are required!")
         # Query ATLAS catalog
         table_atlas = query_atlas_catalog(field, ra_range, dec_range, wsid, password, atalas_dir, mag_limit=12)
     else:
@@ -115,14 +126,14 @@ def eval_halo_pipe(field,
     
     if plot:
         plot_profiles(r_norms, filters, contrasts,
-                      save=True, save_dir=save_dir, suffix='_'+field)
+                      save=save, save_dir=save_dir, suffix='_'+field)
                       
     if do_clustering:
         # Clustering in log space
         labels = clustering_profiles_optimize(r_norms, filters, contrasts,
                                               log=True, eps_grid=eps_grid,
                                               field=field, plot=plot,
-                                              save_plot=True, save_dir=save_dir)
+                                              save_plot=save, save_dir=save_dir)
 
         # Clustering pofiles in linear space
 #        labels = clustering_profiles_optimize(r_norms, filters, contrasts,
@@ -144,14 +155,15 @@ def eval_halo_pipe(field,
         slope_med_list = np.append(slope_med_list, slope_med)
     
     # Show histogram of slopes
-    plt.hist(slope_med_list,alpha=0.5)
-    plt.xlabel("Slope med")
-    plt.show()
+    if plot:
+        plt.hist(slope_med_list,alpha=0.5)
+        plt.xlabel("Slope med")
+        plt.show()
     
     # Make the table with flags, labels, and slopes
     table = Table({'frame':hdu_list, 'filter':filters_, 'flag':flags_})
     table['slope'] = 99.0  # default value 99
-    table['slope'][flags_==1] = slope_med_list
+    table['slope'][flags_==1] = np.around(slope_med_list,4)
     if do_clustering:
         table['label'] = -1  # default value -1
         table['label'][flags_==1] = labels
@@ -165,8 +177,10 @@ def eval_halo_pipe(field,
                 "label: DBSCAN clustering labels. -1: bad/outlier. 99: no clustering."]
     table.meta['comments'] = comments
     
+    if save:
     # Write to disk
-    table.write(os.path.join(save_dir, f'{field}_halo.txt'), format='ascii', overwrite=True)
+        table.write(os.path.join(save_dir, f'{field}_halo.txt'),
+                    format='ascii', overwrite=True)
     
     return table, r_norms, filters
     
@@ -276,6 +290,7 @@ def extract_profile_pipe(hdu_list, segm_list,
                                         threshold_range=[0.005,0.2],
                                         threshold_norm=0.5)
         
+        # Set flag=0 if no valid measurement
         if r_norm is None:
             N_star = 0
             flags[i] = 0
