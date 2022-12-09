@@ -24,8 +24,8 @@ DF_pixel_scale = 2.5
 def query_atlas_catalog(field,
                         ra_range,
                         dec_range,
-                        wsid,
-                        password,
+                        wsid=None,
+                        password=None,
                         atalas_dir='./',
                         mag_limit=12):
     
@@ -41,12 +41,14 @@ def query_atlas_catalog(field,
         Range of RA
     dec_range: tuple or list
         Range of dec
-    wsid: str
+    wsid: str, optional
         casjob WSID
-    password: str
+        If None, catalog_atals_dir is required to build catalog.
+    password: str, optional
         casjob password
-    mag_limit: float
-        Limiting magnitude in g
+        If None, catalog_atals_dir is required to build catalog.
+    mag_limit: float, optional, default 12
+        Limiting magnitude in g-band
     
     Returns
     -------
@@ -60,6 +62,9 @@ def query_atlas_catalog(field,
     
     # Check if a queried catalog already existed
     if not os.path.exists(fname_atlas):
+        if (wsid is None) | (password is None):
+            print("Casjob credentials are required!")
+            raise
         print("Submit casjob to query ATLAS catalog.")
         # Check and delete previous queries
         catalog_match = os.path.join(atalas_dir, 'atlas_*.csv')

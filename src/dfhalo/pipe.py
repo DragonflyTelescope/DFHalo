@@ -28,7 +28,7 @@ def eval_halo_pipe(field,
                    dist_mask_min=100,
                    atalas_dir='./',
                    catalog_atals_dir=None,
-                   save_dir='./',
+                   save_dir='.',
                    plot=True):
     
     """
@@ -84,9 +84,9 @@ def eval_halo_pipe(field,
     """
     
     if save_dir is None:
-        save = True
-    else:
         save = False
+    else:
+        save = True
     
     print(f"Running halo evaluation for {field}.")
     
@@ -96,8 +96,6 @@ def eval_halo_pipe(field,
     filters_ = np.array([fits.getheader(fn)["FILTER"] for fn in hdu_list])
     
     if catalog_atals_dir is None:
-        if (wsid is None) | (password is None):
-            print("Casjob credentials are required!")
         # Query ATLAS catalog
         table_atlas = query_atlas_catalog(field, ra_range, dec_range, wsid, password, atalas_dir, mag_limit=12)
     else:
