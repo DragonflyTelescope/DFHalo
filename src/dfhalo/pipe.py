@@ -18,17 +18,18 @@ def eval_halo_pipe(field,
                    segm_list,
                    catalog_list,
                    ra_range, dec_range,
+                   catalog_atals_dir=None,
                    wsid=None, password=None,
                    thresholds=np.logspace(-0.3,-3.3,22),
                    mag_range=[8.5,10.5],
                    pixel_scale=2.5,
-                   contrast_range=[200, 1000],
                    do_clustering=True,
                    eps_grid=np.arange(0.1,0.3,0.02),
+                   fit_contrast_range=[200, 2000],
                    dist_mask_min=100,
                    atalas_dir='./',
-                   catalog_atals_dir=None,
                    save_dir='.',
+                   verbose=True,
                    plot=True):
     
     """
@@ -56,28 +57,30 @@ def eval_halo_pipe(field,
     password: str, optional
         casjob password
         If None, catalog_atals_dir is required to build catalog.
+    catalog_atals_dir: str, optional
+        Path to the local ATLAS catalog files.
+        If specified, ATALS catalog will be made locally.
+        In the directory, files are sorted by mag (e.g. 00_m_16) or dec.
     thresholds: np.array
         Thresholds at x% of the saturation brightness.
     mag_range: list
         Range of magnitude of bright stars for measurement
     pixel_scale: float
         Pixel scale in arcsec/pixel
-    contrast_range: [float , float]
-        Range of contrast for fitting 1D linear model.
     do_clustering: bool, optional
         If True, do clustering on the profiles to identify outliers.
     eps_grid: 1d array, optional
         Input grid of eps for parameter tuning.
+    fit_contrast_range: [float , float], optional
+        Range of contrast for fitting 1D linear model.
     dist_mask_min: int, optional, default None
         Minimum distance in pix to the field edges mask.
     atalas_dir: str, optional
         Path to store the ATLAS query file.
-    catalog_atals_dir: str, optional
-        Path to the local ATLAS catalog files.
-        If specified, ATALS catalog will be made locally.
-        In the dir files are sorted by mag (e.g. 00_m_16) or dec.
     save_dir: str, optional
         Directory to save plots and table. If None, no save.
+    verbose: bool, optional
+        Verbose printout
     plot: bool, optional
         Whether to draw diagnostic plots.
     
@@ -88,7 +91,8 @@ def eval_halo_pipe(field,
     else:
         save = True
     
-    print(f"Running halo evaluation for {field}.")
+    if verbose:
+        print(f"Running halo evaluation for {field}.")
     
     N_frame = len(hdu_list)
     
@@ -97,7 +101,9 @@ def eval_halo_pipe(field,
     
     if catalog_atals_dir is None:
         # Query ATLAS catalog
-        table_atlas = query_atlas_catalog(field, ra_range, dec_range, wsid, password, atalas_dir, mag_limit=12)
+        table_atlas = query_atlas_catalog(field, ra_range, dec_range,
+                                          wsid, password, atalas_dir,
+                                          mag_limit=12, verbose=verbose)
     else:
         # Build ATLAS catalog from local csv files
         table_atlas = make_atlas_catalog(ra_range, dec_range, mag_limit=12, catalog_dir=catalog_atals_dir)
@@ -115,7 +121,7 @@ def eval_halo_pipe(field,
                                             pixel_scale=pixel_scale,
                                             N_source_min=3000,
                                             dist_mask_min=dist_mask_min,
-                                            plot=plot)
+                                            plot=plot, verbose=verbose)
     
     # Drop profiles bad flags, keep for the brigthest N_star
     # r_norms_ is MxNxK array, M:# of frames, N:max # of stars among frames, K:1 + # of thresholds
@@ -130,7 +136,7 @@ def eval_halo_pipe(field,
         # Clustering in log space
         labels = clustering_profiles_optimize(r_norms, filters, contrasts,
                                               log=True, eps_grid=eps_grid,
-                                              field=field, plot=plot,
+                                              field=field, plot=plot, verbose=verbose,
                                               save_plot=save, save_dir=save_dir)
 
         # Clustering pofiles in linear space
@@ -146,10 +152,10 @@ def eval_halo_pipe(field,
         first_col = r_norm[:,0]
         r_ = r_norm[~np.isnan(first_col)]
         if len(r_) == 0:
-            slope, slope_med = 99, 99
+            slope_med = 99
         else:
-            slopes, slope_med = fit_profile_slopes(r_, contrasts, contrast_range)
-        slopes_list = np.append(slopes_list, slopes)
+            slopes, slope_med = fit_profile_slopes(r_, contrasts, fit_contrast_range)
+            slopes_list = np.append(slopes_list, slopes)
         slope_med_list = np.append(slope_med_list, slope_med)
     
     # Show histogram of slopes
@@ -166,10 +172,10 @@ def eval_halo_pipe(field,
         table['label'] = -1  # default value -1
         table['label'][flags_==1] = labels
     else:
-        table['label'] = 99 * np.ones_like(hdu_list)
+        table['label'] = 99 * np.ones(len(hdu_list))
     
     # Append comments to the table
-    str_contrs_range = ", ".join(map(str, contrast_range))
+    str_contrs_range = ", ".join(map(str, fit_contrast_range))
     comments = ["flags: 1: good. 0: bad profule measurement.",
                 "slope measured between contrast [{:}].".format(str_contrs_range),
                 "label: DBSCAN clustering labels. -1: bad/outlier. 99: no clustering."]
@@ -190,7 +196,7 @@ def extract_profile_pipe(hdu_list, segm_list,
                          pixel_scale=2.5,
                          N_source_min=3000,
                          dist_mask_min=None,
-                         plot=True):
+                         plot=True, verbose=True):
     
     """ 
     Extract curves of growth in the list of frames.
@@ -221,7 +227,9 @@ def extract_profile_pipe(hdu_list, segm_list,
         Minimum distance to the field edges mask.
     plot: bool, optional
         Whether to draw diagnostic plots.
-    
+    verbose: bool, optional
+        Verbose printout
+        
     Returns
     -------
     r_norms: 3d np.array
@@ -263,7 +271,8 @@ def extract_profile_pipe(hdu_list, segm_list,
     profiles = {}
     flags = np.zeros_like(hdu_list, dtype=int)
     
-    print("Remove sources < {:d} pixel to the edges".format(dist_mask_min))
+    if verbose:
+        print("Remove sources < {:d} pixel to the edges".format(dist_mask_min))
     
     for i, (filt, hdu_path, segm_path, catalog_path) in tqdm(enumerate(zip(filters, hdu_list, segm_list, catalog_list))):
         name = os.path.basename(hdu_path).split('_light')[0]
@@ -300,7 +309,8 @@ def extract_profile_pipe(hdu_list, segm_list,
         
     # Get max number of sources to set array dimensions
     N_star_max = np.max([item['N_star'] for (key,item) in profiles.items()])
-    print("N star set to ", N_star_max)
+    if verbose:
+        print("N star set to ", N_star_max)
     
     # Stack profiles into one long array
     r_norms = np.array([])

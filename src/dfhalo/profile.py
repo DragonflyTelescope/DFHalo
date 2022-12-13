@@ -171,7 +171,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         ZP = header['FIDZP']
     except KeyError:
         ZP = header['REFZP']
-    #pixel_scale = header['PIXSCALE']
+        
     wcs = WCS(header)
 
     # Read segment map
@@ -179,6 +179,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
     
     # Mask nan area
     mask_nan = np.isnan(data_full)
+    mask_nan = mask_nan | (data_full==0)  # this line due to reproject sets nan as 0
     seg_map[mask_nan] = np.max(seg_map)+1
 
     # Read SExtractor catalog
@@ -188,7 +189,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
     cond = (tab_SE['MAG_AUTO']>=13) & (tab_SE['MAG_AUTO']<=18)
     
     if len(tab_SE[cond])< N_source_min:
-        print('Too few sources in', fn)
+        # print('Too few sources in', fn)
         return None
     else:
         # Cross match SE catalog and ATLAS catalog

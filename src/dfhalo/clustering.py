@@ -10,7 +10,7 @@ from .plot import plot_profile_clustering
 def clustering_profiles_optimize(r_norms, filters, contrasts,
                                  eps_grid=np.arange(0.1,0.3,0.02),
                                  N_min_sample=5, log=True,
-                                 field='', plot=True,
+                                 field='', plot=True, verbose=True,
                                  save_plot=True, save_dir='.'):
     
     """
@@ -35,6 +35,8 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
         Field name (identifier).
     plot: bool
         Whether to plot diagnostic figures.
+    verbose: bool, optional
+        Verbose printout
     save_plot: bool
         Whether to save plot
     save_dir: str, optional
@@ -84,7 +86,8 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
         
         labels = clustering_data(X, contrasts,
                                  eps=eps, N_min_sample=N_min_sample, log=log,
-                                 save_dir=save_dir, field=field, plot=False)
+                                 save_dir=save_dir, field=field,
+                                 plot=False, verbose=verbose)
         
         if len(set(labels)) > 1:
             score = metrics.silhouette_score(X, labels)
@@ -121,7 +124,9 @@ def clustering_data(X, contrasts,
                     N_min_sample=5,
                     eps=0.2, log=True,
                     field='', plot=True,
-                    save_plot=True, save_dir='.'):
+                    verbose=True,
+                    save_plot=True,
+                    save_dir='.'):
     
     """
     Do DBSCAN clustering on normalized profiles.
@@ -141,6 +146,8 @@ def clustering_data(X, contrasts,
         Whether to clustering profiles in log space.
     field: str
         Field name (identifier).
+    verbose: bool, optional
+        Verbose printout
     save_plot: bool
         Whether to save plot
         
@@ -158,7 +165,8 @@ def clustering_data(X, contrasts,
     # Number of clusters in labels, ignoring noise if present.
     n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
     n_noise_ = list(labels).count(-1)
-    print("eps = %.3f,  "%eps, "N of cluster = %d,  "%n_clusters_, "N of noise = %d"%n_noise_)
+    if verbose:
+        print("eps = %.3f,  "%eps, "N of cluster = %d,  "%n_clusters_, "N of noise = %d"%n_noise_)
     
     if plot:
         plot_profile_clustering(X, labels, contrasts,

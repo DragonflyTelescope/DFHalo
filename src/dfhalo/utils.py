@@ -19,7 +19,7 @@ from photutils.segmentation import SegmentationImage
 
 DF_pixel_scale = 2.5
 
-### ATLAS catlof related ###
+### ATLAS catalog related ###
 
 def query_atlas_catalog(field,
                         ra_range,
@@ -27,7 +27,8 @@ def query_atlas_catalog(field,
                         wsid=None,
                         password=None,
                         atalas_dir='./',
-                        mag_limit=12):
+                        mag_limit=12,
+                        verbose=True):
     
     """
     Query the ATLAS Catalog using Casjob tool.
@@ -49,6 +50,8 @@ def query_atlas_catalog(field,
         If None, catalog_atals_dir is required to build catalog.
     mag_limit: float, optional, default 12
         Limiting magnitude in g-band
+    verbose: bool, optional
+        Verbose printout
     
     Returns
     -------
@@ -65,7 +68,8 @@ def query_atlas_catalog(field,
         if (wsid is None) | (password is None):
             print("Casjob credentials are required!")
             raise
-        print("Submit casjob to query ATLAS catalog.")
+        if verbose:
+            print("Submit casjob to query ATLAS catalog.")
         # Check and delete previous queries
         catalog_match = os.path.join(atalas_dir, 'atlas_*.csv')
         for fn in glob.glob(catalog_match):
@@ -87,7 +91,8 @@ def query_atlas_catalog(field,
         # Rename and read the queried catalog
         shutil.copy(fname_query, fname_atlas)
     else:
-        print(f"ATLAS catalog found as {fname_atlas}.")
+        if verbose:
+            print(f"ATLAS catalog found as {fname_atlas}.")
     
     # Load table
     table_atlas = Table.read(fname_atlas, format='csv')
