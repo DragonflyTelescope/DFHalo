@@ -21,7 +21,7 @@ def query_atlas(ra_range, dec_range,
                 mag_limit=12):
     """
     Query ATLAS database.
-    The query result is saved under './ATALS' directory.
+    The query result is saved under 'ATLAS' directory.
     
     Parameters
     ----------

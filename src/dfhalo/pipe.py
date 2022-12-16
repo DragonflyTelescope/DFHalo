@@ -28,7 +28,7 @@ def eval_halo_pipe(field,
                    eps_grid=np.arange(0.1,0.3,0.02),
                    fit_contrast_range=[200, 3000],
                    dist_mask_min=100,
-                   atlas_dir='./',
+                   atalas_dir='./',
                    save_dir='.',
                    verbose=True,
                    plot=True):
@@ -60,7 +60,7 @@ def eval_halo_pipe(field,
         If None, catalog_atlas_dir is required to build catalog.
     catalog_atlas_dir: str, optional
         Path to the local ATLAS catalog files.
-        If specified, ATALS catalog will be made locally.
+        If specified, ATLAS catalog will be made locally.
         In the directory, files are sorted by mag (e.g. 00_m_16) or dec.
     thresholds: np.array
         Thresholds at x% of the saturation brightness.
@@ -103,7 +103,7 @@ def eval_halo_pipe(field,
     if catalog_atlas_dir is None:
         # Query ATLAS catalog
         table_atlas = query_atlas_catalog(field, ra_range, dec_range,
-                                          wsid, password, atlas_dir,
+                                          wsid, password, atalas_dir,
                                           mag_limit=12, verbose=verbose)
     else:
         # Build ATLAS catalog from local csv files
@@ -215,7 +215,7 @@ def extract_profile_pipe(hdu_list, segm_list,
     Extract curves of growth in the list of frames.
     
     A list of corresponding segementation maps, SE catalogs, and
-    a crossmatched catalog with ATALS are required.
+    a crossmatched catalog with ATLAS are required.
     
     Parameters
     ----------
