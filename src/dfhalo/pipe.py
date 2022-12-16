@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from astropy.io import fits
 from astropy.table import Table
+from astropy.stats import mad_std
 
 from .profile import *
 from .clustering import *
@@ -18,16 +19,16 @@ def eval_halo_pipe(field,
                    segm_list,
                    catalog_list,
                    ra_range, dec_range,
-                   catalog_atals_dir=None,
+                   catalog_atlas_dir=None,
                    wsid=None, password=None,
                    thresholds=np.logspace(-0.3,-3.3,22),
                    mag_range=[8.5,10.5],
                    pixel_scale=2.5,
                    do_clustering=True,
                    eps_grid=np.arange(0.1,0.3,0.02),
-                   fit_contrast_range=[200, 2000],
+                   fit_contrast_range=[200, 3000],
                    dist_mask_min=100,
-                   atalas_dir='./',
+                   atlas_dir='./',
                    save_dir='.',
                    verbose=True,
                    plot=True):
@@ -53,11 +54,11 @@ def eval_halo_pipe(field,
         Range of dec
     wsid: str, optional
         casjob WSID
-        If None, catalog_atals_dir is required to build catalog.
+        If None, catalog_atlas_dir is required to build catalog.
     password: str, optional
         casjob password
-        If None, catalog_atals_dir is required to build catalog.
-    catalog_atals_dir: str, optional
+        If None, catalog_atlas_dir is required to build catalog.
+    catalog_atlas_dir: str, optional
         Path to the local ATLAS catalog files.
         If specified, ATALS catalog will be made locally.
         In the directory, files are sorted by mag (e.g. 00_m_16) or dec.
@@ -75,7 +76,7 @@ def eval_halo_pipe(field,
         Range of contrast for fitting 1D linear model.
     dist_mask_min: int, optional, default None
         Minimum distance in pix to the field edges mask.
-    atalas_dir: str, optional
+    atlas_dir: str, optional
         Path to store the ATLAS query file.
     save_dir: str, optional
         Directory to save plots and table. If None, no save.
@@ -99,14 +100,14 @@ def eval_halo_pipe(field,
     # Get filter names
     filters_ = np.array([fits.getheader(fn)["FILTER"] for fn in hdu_list])
     
-    if catalog_atals_dir is None:
+    if catalog_atlas_dir is None:
         # Query ATLAS catalog
         table_atlas = query_atlas_catalog(field, ra_range, dec_range,
-                                          wsid, password, atalas_dir,
+                                          wsid, password, atlas_dir,
                                           mag_limit=12, verbose=verbose)
     else:
         # Build ATLAS catalog from local csv files
-        table_atlas = make_atlas_catalog(ra_range, dec_range, mag_limit=12, catalog_dir=catalog_atals_dir)
+        table_atlas = make_atlas_catalog(ra_range, dec_range, mag_limit=12, catalog_dir=catalog_atlas_dir)
     
     # Contrasts from thresholds
     contrasts = 1/thresholds
@@ -145,17 +146,26 @@ def eval_halo_pipe(field,
 #                                              field=field, plot=plot,
 #                                              save_plot=True, save_dir=save_dir)
     
-    # Fit a 1D linear model to outskirts
+    # Fit a 1D linear model on outskirts
     slopes_list = np.array([])
     slope_med_list = np.array([])
+    chi2_list = np.array([])
+    
+    # stddev of profiles, values evaluated at normalized radius
+    std_profiles = np.median(mad_std(np.log10(r_norms), axis=1, ignore_nan=True),axis=0)
+    std_y = np.min(std_profiles)
+    
     for r_norm in r_norms:
         first_col = r_norm[:,0]
         r_ = r_norm[~np.isnan(first_col)]
+        
         if len(r_) == 0:
-            slope_med = 99
+            slope_med, chi2 = 99, 99
         else:
-            slopes, slope_med = fit_profile_slopes(r_, contrasts, fit_contrast_range)
+            slopes, slope_med, chi2 = fit_profile_slopes(np.log10(r_), contrasts, fit_contrast_range, std_y=std_y)
             slopes_list = np.append(slopes_list, slopes)
+            chi2_list = np.append(chi2_list, chi2)
+            
         slope_med_list = np.append(slope_med_list, slope_med)
     
     # Show histogram of slopes
@@ -167,7 +177,10 @@ def eval_halo_pipe(field,
     # Make the table with flags, labels, and slopes
     table = Table({'frame':hdu_list, 'filter':filters_, 'flag':flags_})
     table['slope'] = 99.0  # default value 99
+    table['chi2'] = 99.0   # default value 99
     table['slope'][flags_==1] = np.around(slope_med_list,4)
+    table['chi2'][flags_==1] = np.around(chi2_list,3)
+    
     if do_clustering:
         table['label'] = -1  # default value -1
         table['label'][flags_==1] = labels

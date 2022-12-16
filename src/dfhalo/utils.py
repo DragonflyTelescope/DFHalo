@@ -26,13 +26,13 @@ def query_atlas_catalog(field,
                         dec_range,
                         wsid=None,
                         password=None,
-                        atalas_dir='./',
+                        atlas_dir='./',
                         mag_limit=12,
                         verbose=True):
     
     """
     Query the ATLAS Catalog using Casjob tool.
-    The query result is saved under atalas_dir directory.
+    The query result is saved under atlas_dir directory.
     
     Parameters
     ----------
@@ -44,10 +44,10 @@ def query_atlas_catalog(field,
         Range of dec
     wsid: str, optional
         casjob WSID
-        If None, catalog_atals_dir is required to build catalog.
+        If None, catalog_atlas_dir is required to build catalog.
     password: str, optional
         casjob password
-        If None, catalog_atals_dir is required to build catalog.
+        If None, catalog_atlas_dir is required to build catalog.
     mag_limit: float, optional, default 12
         Limiting magnitude in g-band
     verbose: bool, optional
@@ -61,7 +61,7 @@ def query_atlas_catalog(field,
     """
     from .atlas import query_atlas
     
-    fname_atlas = os.path.join(atalas_dir, f'{field}_atlas.csv')
+    fname_atlas = os.path.join(atlas_dir, f'{field}_atlas.csv')
     
     # Check if a queried catalog already existed
     if not os.path.exists(fname_atlas):
@@ -71,7 +71,7 @@ def query_atlas_catalog(field,
         if verbose:
             print("Submit casjob to query ATLAS catalog.")
         # Check and delete previous queries
-        catalog_match = os.path.join(atalas_dir, 'atlas_*.csv')
+        catalog_match = os.path.join(atlas_dir, 'atlas_*.csv')
         for fn in glob.glob(catalog_match):
             os.remove(fn)
 
@@ -113,7 +113,7 @@ def make_atlas_catalog(ra_range,
         Range of RA
     dec_range: tuple or list
         Range of dec
-    catalog_atals_dir: str
+    catalog_atlas_dir: str
         Path to the local ATLAS catalog files.
         In the dir files are sorted by mag or dec (e.g. 00_m_16).
     mag_limit: float
@@ -163,49 +163,70 @@ def make_atlas_catalog(ra_range,
 
 
 ### Fitting related ###
-def fit_profile_slopes(r_profiles, contrasts, contrast_range=[200, 2000]):
+def fit_profile_slopes(y_profiles, contrasts,
+                       contrast_range=[200, 2000],
+                       std_y=0.016):
     """
     Fit a 1D linear model to the group of curves of growths.
 
     Parameters
     ----------
-    r_profiles: 2d np.array
-        Curves of Growth of an individual frame (axis 0: star, axis 1: radius)
+    y_profiles: 2d np.array
+        Curves of Growth of an individual frame in log unit
+        (axis 0: star, axis 1: radius)
     contrasts: np.array
         Contrasts at 1/x% of the saturation brightness.
     contrast_range: [float , float]
         Range of contrast for fitting 1D linear model.
+    std_y : float
+        Stddev used for calculate chi-2.
 
     Returns
     -------
     slopes: 1D array
         Slopes of profiles sorted by stars
-
     slope_med: float
         Slope of the median profile
+    chi2: float
+        Reduced Chi-square of fitting stars
         
     """
-
-    N_star = r_profiles.shape[0]
+    
+    # Number of stars. The value changes frame-by-frame.
+    N_star = y_profiles.shape[0]
     slopes = np.zeros(N_star)
+    chi2s = np.zeros(N_star)
 
     # Range of fitting
     fit_range = (contrasts>=contrast_range[0])&(contrasts<=contrast_range[1])
-
+    dof = np.sum(fit_range)-1
+    
+    # x axis in log
+    x_profiles = np.log10(contrasts)
+    
+    # Median & stddev
+    y_profiles_med = np.nanmedian(y_profiles, axis=0)
+    
+    # Fit a 1D linear for the median profile
+    slope_med, intcp_med = np.polyfit(x_profiles[fit_range], y_profiles_med[fit_range], deg=1)
+    
+    # Individual profiles
     for j in range(N_star):
-        r_ = r_profiles[j]  # first value is saturation radius
+        r_ = y_profiles[j]  # first value is saturation radius
 
         # Fit a 1D linear model between threshold_range
-        slope, intcp =  np.polyfit(np.log10(contrasts[fit_range]), np.log10(r_[fit_range]), deg=1)
+        slope, intcp =  np.polyfit(x_profiles[fit_range], r_[fit_range], deg=1)
         slopes[j] = slope
-
-    # Median profile
-    r_profiles_med = np.nanmedian(r_profiles, axis=0)
-
-    # Fit a 1D linear for the median profile
-    slope_med, intcp_med = np.polyfit(np.log10(contrasts[fit_range]), np.log10(r_profiles_med[fit_range]), deg=1)
-
-    return slopes, slope_med
+        
+        poly = np.poly1d([slope, intcp])
+    
+        # Chi2
+        chi = ((r_-poly(x_profiles))/std_y)[fit_range]
+        chi2s[j] = np.sum(chi**2)/dof
+        
+    chi2 = np.mean(chi2s)
+    
+    return slopes, slope_med, chi2
 
 
 ### Miscellaneous calculation ###
