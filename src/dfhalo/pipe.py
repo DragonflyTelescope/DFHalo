@@ -164,8 +164,8 @@ def eval_halo_pipe(field,
         else:
             slopes, slope_med, chi2 = fit_profile_slopes(np.log10(r_), contrasts, fit_contrast_range, std_y=std_y)
             slopes_list = np.append(slopes_list, slopes)
-            chi2_list = np.append(chi2_list, chi2)
             
+        chi2_list = np.append(chi2_list, chi2)
         slope_med_list = np.append(slope_med_list, slope_med)
     
     # Show histogram of slopes
