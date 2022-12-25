@@ -28,7 +28,7 @@ def eval_halo_pipe(field,
                    eps_grid=np.arange(0.1,0.3,0.02),
                    fit_contrast_range=[200, 3000],
                    dist_mask_min=100,
-                   atalas_dir='./',
+                   atlas_dir='./',
                    save_dir='.',
                    verbose=True,
                    plot=True):
@@ -103,7 +103,7 @@ def eval_halo_pipe(field,
     if catalog_atlas_dir is None:
         # Query ATLAS catalog
         table_atlas = query_atlas_catalog(field, ra_range, dec_range,
-                                          wsid, password, atalas_dir,
+                                          wsid, password, atlas_dir,
                                           mag_limit=12, verbose=verbose)
     else:
         # Build ATLAS catalog from local csv files
