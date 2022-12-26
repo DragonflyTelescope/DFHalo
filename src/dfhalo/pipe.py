@@ -282,7 +282,6 @@ def extract_profile_pipe(hdu_list, segm_list,
     
     # Measure profiles
     profiles = {}
-    flags = np.zeros_like(hdu_list, dtype=int)
     
     if verbose:
         print("Remove sources < {:d} pixel to the edges".format(dist_mask_min))
@@ -313,12 +312,12 @@ def extract_profile_pipe(hdu_list, segm_list,
         # Set flag=0 if no valid measurement
         if r_norm is None:
             N_star = 0
-            flags[i] = 0
+            flag = 0
         else:
             N_star = r_norm.shape[0]
-            flags[i] = 1
+            flag = 1
         
-        profiles[name] = dict(r_norm=r_norm, N_star=N_star)
+        profiles[name] = dict(r_norm=r_norm, N_star=N_star, flag=flag)
         
     # Get max number of sources to set array dimensions
     N_star_max = np.max([item['N_star'] for (key,item) in profiles.items()])
@@ -327,9 +326,11 @@ def extract_profile_pipe(hdu_list, segm_list,
     
     # Stack profiles into one long array
     r_norms = np.array([])
+    flags = np.array([])
     for i,name in enumerate(profiles.keys()):
         r_norm = profiles[name]['r_norm']
         N_star = profiles[name]['N_star']
+        flag = profiles[name]['flag']
         
         # Fill in all nan
         if N_star==0:
@@ -342,5 +343,6 @@ def extract_profile_pipe(hdu_list, segm_list,
                 r_norm = np.vstack([r_norm, np.nan * np.zeros((N_fill, len(thresholds)+1))])
 
         r_norms = np.vstack([r_norms, [r_norm]]) if i>0 else [r_norm]
+        flags = np.append(flags, flag)
         
     return r_norms, flags
