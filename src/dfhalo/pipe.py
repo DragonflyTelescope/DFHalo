@@ -92,10 +92,10 @@ def eval_halo_pipe(field,
     else:
         save = True
     
-    if verbose:
-        print(f"Running halo evaluation for {field}.")
-    
     N_frame = len(hdu_list)
+    
+    if verbose:
+        print("Running halo evaluation on {:d} frames of field {:s}.".format(N_frame, field))
     
     # Get filter names
     filters_ = np.array([fits.getheader(fn)["FILTER"] for fn in hdu_list])
@@ -286,7 +286,7 @@ def extract_profile_pipe(hdu_list, segm_list,
     if verbose:
         print("Remove sources < {:d} pixel to the edges".format(dist_mask_min))
     
-    for i, (filt, hdu_path, segm_path, catalog_path) in tqdm(enumerate(zip(filters, hdu_list, segm_list, catalog_list))):
+    for idx, (filt, hdu_path, segm_path, catalog_path) in tqdm(enumerate(zip(filters, hdu_list, segm_list, catalog_list))):
         name = os.path.basename(hdu_path).split('_light')[0]
         
         if filt=='G':
@@ -317,7 +317,7 @@ def extract_profile_pipe(hdu_list, segm_list,
             N_star = r_norm.shape[0]
             flag = 1
         
-        profiles[name] = dict(r_norm=r_norm, N_star=N_star, flag=flag)
+        profiles[idx] = dict(hdu_path=hdu_path, r_norm=r_norm, N_star=N_star, flag=flag)
         
     # Get max number of sources to set array dimensions
     N_star_max = np.max([item['N_star'] for (key,item) in profiles.items()])
@@ -327,10 +327,10 @@ def extract_profile_pipe(hdu_list, segm_list,
     # Stack profiles into one long array
     r_norms = np.array([])
     flags = np.array([])
-    for i,name in enumerate(profiles.keys()):
-        r_norm = profiles[name]['r_norm']
-        N_star = profiles[name]['N_star']
-        flag = profiles[name]['flag']
+    for idx in profiles.keys():
+        r_norm = profiles[idx]['r_norm']
+        N_star = profiles[idx]['N_star']
+        flag = profiles[idx]['flag']
         
         # Fill in all nan
         if N_star==0:
@@ -342,7 +342,7 @@ def extract_profile_pipe(hdu_list, segm_list,
             if N_fill>0:
                 r_norm = np.vstack([r_norm, np.nan * np.zeros((N_fill, len(thresholds)+1))])
 
-        r_norms = np.vstack([r_norms, [r_norm]]) if i>0 else [r_norm]
+        r_norms = np.vstack([r_norms, [r_norm]]) if idx>0 else [r_norm]
         flags = np.append(flags, flag)
         
     return r_norms, flags
