@@ -133,13 +133,21 @@ def make_atlas_catalog(ra_range,
     ra_intgs = np.arange(np.floor(ra_range[0]), np.floor(ra_range[1])+1, 1, dtype=int)
     dec_intgs = np.arange(np.floor(dec_range[0]), np.floor(dec_range[1])+1, 1, dtype=int)
     
+    # Upper and lower limit
+    ra_intgs = ra_intgs[(ra_intgs>=0)&(ra_intgs<=359)]
+    dec_intgs = dec_intgs[(dec_intgs<=89)&(dec_intgs>=-90)]
+    
+    # Use complementay set for targets crossing meridian
+    if len(ra_intgs)>300:  # footprint ra > 300 deg
+        ra_intgs = list(set(np.arange(0,360)) - set(ra_intgs))
+        
     # Read and join square degree catalogs
     table_atlas = Table()
     for ra_int in ra_intgs:
         for dec_int in dec_intgs:
             ra_str = ''.join([str(ra_int // 100 % 10), str(ra_int // 10 % 10), str(ra_int % 10)])
             dec_str= ''.join([str(abs(dec_int) // 10 % 10), str(abs(dec_int) % 10)])
-            dec_str = '+' + dec_str if dec_int>0 else '-' + dec_str
+            dec_str = '+' + dec_str if dec_int>=0 else '-' + dec_str
             radec_str = '00_m_16/{0}{1}.rc2'.format(ra_str, dec_str)
             fn_cat_sqdeg = os.path.join(catalog_dir, radec_str)
             tab_sqdeg = Table.read(fn_cat_sqdeg, format='ascii',
