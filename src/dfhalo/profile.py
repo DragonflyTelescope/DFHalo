@@ -237,34 +237,34 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
             thumb.extract_star(data_full, seg_map=seg_map,
                                n_win=30, b_size=50, max_size=300)
             
-            # Skip if there is too many masked pixels around (>60%)
             if np.sum(thumb.star_ma) > 0.7 * np.size(thumb.img_thumb):
-                return None
+                # Skip if there is too many masked pixels around (>60%)
+                r_profile = np.nan * np.ones(1+len(thresholds))
+            else:
+                # center, 2D local background and mask
+                cen = thumb.cen_star
+                back = thumb.bkg
+                mask = thumb.star_ma
                 
-            # center, 2D local background and mask
-            cen = thumb.cen_star
-            back = thumb.bkg
-            mask = thumb.star_ma
-            
-            # Compute profiles
-            r_rbin, z_rbin, r_satr = compute_radial_profile(thumb.img_thumb, 
-                                                            cen=cen, mask=mask,
-                                                            back=back, sky_mean=0, 
-                                                            dr=0.2, seeing=2.5,
-                                                            pixel_scale=pixel_scale, 
-                                                            core_undersample=False)
-            # Background value with all sources masked
-            #bkg_val = 0
-            bkg_val = np.median(back[~thumb.mask_thumb])
-            
-            # Convert intensity to surface brightnesss
-            I_rbin = Intensity2SB(z_rbin, BKG=bkg_val, ZP=ZP, pixel_scale=pixel_scale)
-            
-            # Calculate radii at a series of thresholds
-            r_profile = np.array([calculate_threshold_radius(r_rbin, I_rbin, thre, I_satr) for thre in thresholds])
-            
-            # Append saturation radius
-            r_profile = np.append(r_satr, r_profile)
+                # Compute profiles
+                r_rbin, z_rbin, r_satr = compute_radial_profile(thumb.img_thumb,
+                                                                cen=cen, mask=mask,
+                                                                back=back, sky_mean=0,
+                                                                dr=0.2, seeing=2.5,
+                                                                pixel_scale=pixel_scale,
+                                                                core_undersample=False)
+                # Background value with all sources masked
+                #bkg_val = 0
+                bkg_val = np.median(back[~thumb.mask_thumb])
+                
+                # Convert intensity to surface brightnesss
+                I_rbin = Intensity2SB(z_rbin, BKG=bkg_val, ZP=ZP, pixel_scale=pixel_scale)
+                
+                # Calculate radii at a series of thresholds
+                r_profile = np.array([calculate_threshold_radius(r_rbin, I_rbin, thre, I_satr) for thre in thresholds])
+                
+                # Append saturation radius
+                r_profile = np.append(r_satr, r_profile)
             
             # Add threshold radii
             r_profiles = np.vstack([r_profiles, r_profile]) if i>0 else r_profile
