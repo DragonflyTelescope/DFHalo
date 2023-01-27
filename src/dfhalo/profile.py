@@ -239,7 +239,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
             
             if np.sum(thumb.star_ma) > 0.7 * np.size(thumb.img_thumb):
                 # Skip if there is too many masked pixels around (>60%)
-                r_profile = np.nan * np.ones(1+len(thresholds))
+                continue
             else:
                 # center, 2D local background and mask
                 cen = thumb.cen_star
@@ -267,7 +267,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
                 r_profile = np.append(r_satr, r_profile)
             
             # Add threshold radii
-            r_profiles = np.vstack([r_profiles, r_profile]) if i>0 else r_profile
+            r_profiles = np.vstack([r_profiles, r_profile]) if len(r_profiles)>0 else r_profile
         
         return r_profiles
     
