@@ -296,18 +296,22 @@ def extract_profile_pipe(hdu_list, segm_list,
     
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', AstropyUserWarning)
-            r_profiles = extract_threshold_profile(hdu_path, segm_path,
-                                                   catalog_path, table_atlas,
-                                                   thresholds=thresholds, 
-                                                   mag_range=mag_range,
-                                                   dist_mask_min=dist_mask_min, 
-                                                   pixel_scale=pixel_scale,
-                                                   N_source_min=N_source_min)
+            try:
+                r_profiles = extract_threshold_profile(hdu_path, segm_path,
+                                                       catalog_path, table_atlas,
+                                                       thresholds=thresholds,
+                                                       mag_range=mag_range,
+                                                       dist_mask_min=dist_mask_min,
+                                                       pixel_scale=pixel_scale,
+                                                       N_source_min=N_source_min)
 
-            # Normalize profiles by 1D intercepts at threshold_norm
-            r_norm = normalize_profiles(r_profiles, thresholds, 
-                                        threshold_range=[0.005,0.2],
-                                        threshold_norm=0.5)
+                # Normalize profiles by 1D intercepts at threshold_norm
+                r_norm = normalize_profiles(r_profiles, thresholds,
+                                            threshold_range=[0.005,0.2],
+                                            threshold_norm=0.5)
+            except IndexError:
+                print(f'{hdu_path} failed in profile extraction!')
+                r_norm = None
         
         # Set flag=0 if no valid measurement
         if r_norm is None:
