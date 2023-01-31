@@ -152,8 +152,8 @@ def eval_halo_pipe(field,
     chi2_list = np.array([])
     
     # stddev of profiles, values evaluated at normalized radius
-    std_profiles = np.median(mad_std(np.log10(r_norms), axis=1, ignore_nan=True),axis=0)
-    std_y = np.min(std_profiles)
+    std_profiles = np.nanmedian(mad_std(np.log10(r_norms), axis=1, ignore_nan=True),axis=0)
+    std_y = np.nanmin(std_profiles)
     
     for r_norm in r_norms:
         first_col = r_norm[:,0]

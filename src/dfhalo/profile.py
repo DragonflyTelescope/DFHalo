@@ -269,7 +269,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
             # Add threshold radii
             r_profiles = np.vstack([r_profiles, r_profile]) if len(r_profiles)>0 else r_profile
         
-        return r_profiles
+        return np.atleast_2d(r_profiles)
     
 def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.2], threshold_norm=0.5):
     """
