@@ -267,9 +267,9 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
                 r_profile = np.append(r_satr, r_profile)
             
             # Add threshold radii
-            r_profiles = np.vstack([r_profiles, r_profile]) if len(r_profiles)>0 else r_profile
+            r_profiles = np.vstack([r_profiles, r_profile]) if len(r_profiles)>0 else np.array([r_profile])
         
-        return np.atleast_2d(r_profiles)
+        return r_profiles
     
 def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.2], threshold_norm=0.5):
     """
@@ -298,6 +298,7 @@ def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.2], thre
         return None
     
     N_star = r_profiles.shape[0]
+        
     contrasts = 1/thresholds
     contrast_norm = 1/threshold_norm
     r_profiles_norm = np.empty_like(r_profiles)
