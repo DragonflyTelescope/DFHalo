@@ -175,12 +175,12 @@ def fit_profile_slopes(y_profiles, contrasts,
                        contrast_range=[200, 2000],
                        std_y=0.016):
     """
-    Fit a 1D linear model to the group of curves of growths.
+    Fit a 1D linear model to the group of radii-threshold profiles.
 
     Parameters
     ----------
     y_profiles: 2d np.array
-        Curves of Growth of an individual frame in log unit
+        Radii-threshold profile of an individual frame in log unit
         (axis 0: star, axis 1: radius)
     contrasts: np.array
         Contrasts at 1/x% of the saturation brightness.
@@ -443,6 +443,11 @@ class Thumb_Image:
                               mad_std(img_thumb_ma)*im_)
         self.bkg = back
         self.bkg_rms = back_rms
+        
+        if display_bkg:
+            # show background subtraction
+            from .plot import display_background
+            display_background(img_thumb, back)
                 
         if seg_thumb is None:
             # do local source detection to remove faint stars using photutils
@@ -458,12 +463,18 @@ class Thumb_Image:
         # star_ma mask other sources in the thumbnail
         star_label = segm_deb.data[round(self.cen_star[1]), round(self.cen_star[0])]
         star_ma = ~((segm_deb.data==star_label) | (segm_deb.data==0))
-        self.star_ma = star_ma
         
         # Dilation on mask map
         if n_dilation is not None:
-            self.mask_thumb = binary_dilation(mask_thumb, iterations=n_dilation)
-            self.star_ma = binary_dilation(star_ma, iterations=n_dilation)
+            mask_thumb = binary_dilation(mask_thumb, iterations=n_dilation)
+            star_ma = binary_dilation(star_ma, iterations=n_dilation)
+        
+        self.mask_thumb = mask_thumb
+        self.star_ma = star_ma
+       
+        if display:
+            from .plot import display_source
+            display_source(img_thumb, segm_deb, star_ma, back)
             
     def compute_Rnorm(self, R=12, **kwargs):
         """

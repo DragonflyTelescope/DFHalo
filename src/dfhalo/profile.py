@@ -25,7 +25,7 @@ def compute_radial_profile(img, cen=None, mask=None,
                           back=None, bins=None,
                           seeing=2.5, 
                           pixel_scale=2.5, 
-                          sky_mean=0, dr=1,
+                          sky_mean=0, dr=0.5,
                           core_undersample=False, 
                           use_annulus=False):
     
@@ -68,10 +68,10 @@ def compute_radial_profile(img, cen=None, mask=None,
             # for undersampled core, bin at int pixels
             bins_inner = np.unique(r[r<r_core]) - 1e-3
         else:
-            n_bin_inner = int(min((r_core/d_r*2), 6))
+            n_bin_inner = int(min((r_core/d_r*2), 10))
             bins_inner = np.linspace(0, r_core-d_r, n_bin_inner) - 1e-3
 
-        n_bin_outer = np.max([6, np.min([np.int32(r_max/d_r/10), 50])])
+        n_bin_outer = np.max([6, np.min([np.int32(r_max/d_r/10), 100])])
         if r_max > (r_core+d_r):
             bins_outer = np.logspace(np.log10(r_core+d_r),
                                      np.log10(r_max+2*d_r), n_bin_outer)
@@ -156,7 +156,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
     Returns
     -------
     r_norms: 3d np.array
-        Curves of Growth (axis 0: frame, axis 1: star, axis 2: radius)
+        Radii-threshold profile (axis 0: frame, axis 1: star, axis 2: radius)
         
     """
     from .utils import Intensity2SB, Thumb_Image, measure_dist_to_edge
@@ -250,7 +250,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
                 r_rbin, z_rbin, r_satr = compute_radial_profile(thumb.img_thumb,
                                                                 cen=cen, mask=mask,
                                                                 back=back, sky_mean=0,
-                                                                dr=0.2, seeing=2.5,
+                                                                dr=0.1, seeing=2.5,
                                                                 pixel_scale=pixel_scale,
                                                                 core_undersample=False)
                 # Background value with all sources masked
@@ -261,7 +261,11 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
                 I_rbin = Intensity2SB(z_rbin, BKG=bkg_val, ZP=ZP, pixel_scale=pixel_scale)
                 
                 # Calculate radii at a series of thresholds
-                r_profile = np.array([calculate_threshold_radius(r_rbin, I_rbin, thre, I_satr) for thre in thresholds])
+#                r_profile = np.array([calculate_threshold_radius(r_rbin, I_rbin, thre, I_satr) for thre in thresholds])
+                
+                I_thre = np.array([(I_satr-2.5*np.log10(thre)) for thre in thresholds])
+                r_thre = np.interp(I_thre, xp=I_rbin, fp=r_rbin)
+                r_profile = r_thre.copy()
                 
                 # Append saturation radius
                 r_profile = np.append(r_satr, r_profile)
@@ -271,18 +275,20 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         
         return r_profiles
     
-def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.2], threshold_norm=0.5):
+def normalize_profiles(r_profiles, thresholds,
+                       threshold_range=[0.02,0.5], threshold_norm=None):
     """
     Normalize profiles by fitting 1D linear model
     
     Parameters
     ----------
     r_profiles: 2d np.array
-        Curves of Growth (axis 0: star, axis 1: radius)
+        Radii-threshold profile (axis 0: star, axis 1: radius)
     thresholds: np.array
         Thresholds at x% of the saturation brightness.
     threshold_range: [float , float]
         Range of threshold for fitting 1D linear model.
+        If None, use the first threshold radii.
     threshold_norm: float
         Threshold at which the curves are normalized.
         The value is interpolated from 1D linear model.
@@ -290,7 +296,7 @@ def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.2], thre
     Returns
     -------
     r_profiles_norm: 2d np.array
-        Normalized curves of Growth (axis 0: star, axis 1: radius)
+        Normalized radii-threshold profile (axis 0: star, axis 1: radius)
         
     """
     
@@ -298,20 +304,30 @@ def normalize_profiles(r_profiles, thresholds, threshold_range=[0.005,0.2], thre
         return None
     
     N_star = r_profiles.shape[0]
-        
+    
     contrasts = 1/thresholds
-    contrast_norm = 1/threshold_norm
+    if threshold_norm is None:
+        contrast_norm = contrasts[0]
+    else:
+        contrast_norm = 1/threshold_norm
+        
     r_profiles_norm = np.empty_like(r_profiles)
     
-    for j in range(N_star):
-        r_ = r_profiles[j]  # first value is saturation radius
-
-        # fir a 1D linear model between threshold_range
+    if threshold_range is None:
+        for j in range(N_star):
+            r_ = r_profiles[j]
+            r_profiles_norm[j] = r_/r_[1] # first value is saturation radius
+    else:
         fit_range = (thresholds>=threshold_range[0])&(thresholds<=threshold_range[1])
-        slope, intcp =  np.polyfit(np.log10(contrasts[fit_range]), np.log10(r_[1:][fit_range]), deg=1)
+        
+        for j in range(N_star):
+            r_ = r_profiles[j]  # first value is saturation radius
+            
+            # fit a 1D linear model between threshold_range
+            slope, intcp =  np.polyfit(np.log10(contrasts[fit_range]), np.log10(r_[1:][fit_range]), deg=1)
 
-        # normalize by value at contrast_norm
-        norm = slope * np.log10(contrast_norm) + intcp
-        r_profiles_norm[j] = r_/(10**norm)
+            # normalize by value at contrast_norm
+            norm = slope * np.log10(contrast_norm) + intcp
+            r_profiles_norm[j] = r_/(10**norm)
         
     return r_profiles_norm
