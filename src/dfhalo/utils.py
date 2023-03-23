@@ -173,7 +173,7 @@ def make_atlas_catalog(ra_range,
 ### Fitting related ###
 def fit_profile_slopes(y_profiles, contrasts,
                        contrast_range=[200, 2000],
-                       std_y=0.016):
+                       x_on_y=False, std_y=0.016):
     """
     Fit a 1D linear model to the group of radii-threshold profiles.
 
@@ -186,6 +186,8 @@ def fit_profile_slopes(y_profiles, contrasts,
         Contrasts at 1/x% of the saturation brightness.
     contrast_range: [float , float]
         Range of contrast for fitting 1D linear model.
+    x_on_y: bool
+        If True, the linear fitting will be threshold on radii.
     std_y : float
         Stddev used for calculate chi-2.
 
@@ -216,20 +218,32 @@ def fit_profile_slopes(y_profiles, contrasts,
     y_profiles_med = np.nanmedian(y_profiles, axis=0)
     
     # Fit a 1D linear for the median profile
-    slope_med, intcp_med = np.polyfit(x_profiles[fit_range], y_profiles_med[fit_range], deg=1)
+    if x_on_y:
+        slope_med, intcp_med = np.polyfit(y_profiles_med[fit_range], x_profiles[fit_range], deg=1)
+    else:
+        slope_med, intcp_med = np.polyfit(x_profiles[fit_range], y_profiles_med[fit_range], deg=1)
     
     # Individual profiles
     for j in range(N_star):
         r_ = y_profiles[j]  # first value is saturation radius
-
+        fit_range = fit_range & (~np.isnan(r_))
+        
         # Fit a 1D linear model between threshold_range
-        slope, intcp =  np.polyfit(x_profiles[fit_range], r_[fit_range], deg=1)
+        if x_on_y:
+            slope, intcp =  np.polyfit(r_[fit_range], x_profiles[fit_range], deg=1)
+        else:
+            slope, intcp =  np.polyfit(x_profiles[fit_range], r_[fit_range], deg=1)
+            
         slopes[j] = slope
         
         poly = np.poly1d([slope, intcp])
     
         # Chi2
-        chi = ((r_-poly(x_profiles))/std_y)[fit_range]
+        if x_on_y:
+            chi = ((r_-(x_profiles-intcp)/slope)/std_y)[fit_range]
+        else:
+            chi = ((r_-poly(x_profiles))/std_y)[fit_range]
+            
         chi2s[j] = np.sum(chi**2)/dof
         
     chi2 = np.mean(chi2s)

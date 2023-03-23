@@ -13,7 +13,7 @@ from astropy import units as u
 from astropy.table import Table
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
-from astropy.stats import sigma_clip
+from astropy.stats import sigma_clip, mad_std
 from astropy.utils.exceptions import AstropyUserWarning
 
 def calculate_threshold_radius(r, I, threshold, I_satr):
@@ -26,7 +26,8 @@ def compute_radial_profile(img, cen=None, mask=None,
                           seeing=2.5, 
                           pixel_scale=2.5, 
                           sky_mean=0, dr=0.5,
-                          core_undersample=False, 
+                          core_undersample=False,
+                          return_error=False,
                           use_annulus=False):
     
     """ Extract radial profiles from the image cutout. """
@@ -82,6 +83,8 @@ def compute_radial_profile(img, cen=None, mask=None,
     
     # Calculate binned 1d profile
     r_rbin, z_rbin = np.array([]), np.array([])
+    z_std_rbin = np.array([])
+    #z_q1_rbin, z_q2_rbin = np.array([]), np.array([])
     
     for k, b in enumerate(bins[:-1]):
         r_in, r_out = bins[k], bins[k+1]
@@ -102,14 +105,20 @@ def compute_radial_profile(img, cen=None, mask=None,
                 z_clip = z_clip.compressed()
             if len(z_clip)==0:
                 continue
+                
+            Nz = len(z_clip)
 
             zb = np.mean(z_clip)
-            zstd_b = np.std(z_clip) if len(z_clip) > 10 else 0
+            zstd_b = np.std(z_clip)/np.sqrt(Nz) if Nz> 10 else 0
+            #zq1_b, zq2_b = np.nanquantile(z_clip, [0.16, 0.84]) if Nz>10 else [zb] * 2
             rb = np.mean(r[in_bin])
 
         z_rbin = np.append(z_rbin, zb)
+        z_std_rbin = np.append(z_std_rbin, zstd_b)
+        #z_q1_rbin = np.append(z_q1_rbin, zq1_b)
+        #z_q2_rbin = np.append(z_q2_rbin, zq2_b)
         r_rbin = np.append(r_rbin, rb)
-    
+        
     # Decide the approxiamte radius within which it saturates
     # roughly at where intersity drops by half
     with warnings.catch_warnings():
@@ -118,7 +127,10 @@ def compute_radial_profile(img, cen=None, mask=None,
         dz_cum = np.cumsum(dz_rbin)
     r_satr = r_rbin[np.argmax(dz_cum<-0.3)] + 1e-3
     
-    return r_rbin, z_rbin, r_satr
+    if return_error:
+        return r_rbin, z_rbin, z_std_rbin, r_satr
+    else:
+        return r_rbin, z_rbin, r_satr
 
 
 def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas, 

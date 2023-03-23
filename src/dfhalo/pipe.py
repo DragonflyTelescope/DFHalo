@@ -29,6 +29,7 @@ def eval_halo_pipe(field,
                    threshold_range=[0.02,0.5],
                    threshold_norm=None,
                    fit_contrast_range=[200, 3000],
+                   x_on_y=False,
                    dist_mask_min=100,
                    atlas_dir='./',
                    save_dir='.',
@@ -81,6 +82,8 @@ def eval_halo_pipe(field,
         The value is interpolated from 1D linear model.
     fit_contrast_range: [float , float], optional
         Range of contrast for fitting 1D linear model.
+    x_on_y: bool, optional
+        If True, the linear fitting will be threshold on radii.
     dist_mask_min: int, optional, default None
         Minimum distance in pix to the field edges mask.
     atlas_dir: str, optional
@@ -171,7 +174,7 @@ def eval_halo_pipe(field,
         if len(r_) == 0:
             slope_med, chi2 = 99, 99
         else:
-            slopes, slope_med, chi2 = fit_profile_slopes(np.log10(r_), contrasts, fit_contrast_range, std_y=std_y)
+            slopes, slope_med, chi2 = fit_profile_slopes(np.log10(r_), contrasts, fit_contrast_range, x_on_y=x_on_y, std_y=std_y)
             slopes_list = np.append(slopes_list, slopes)
             
         chi2_list = np.append(chi2_list, chi2)
