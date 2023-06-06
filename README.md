@@ -22,7 +22,7 @@ conda install -c conda-forge openjdk
 
 ```bash
 cd <install directory>
-git https://github.com/NGC4676/DFHalo.git
+git clone https://github.com/DragonflyTelescope/DFHalo.git
 cd DFHalo
 pip install -e .
 ```
