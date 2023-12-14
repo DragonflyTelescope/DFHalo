@@ -29,6 +29,7 @@ def eval_halo_pipe(field,
                    threshold_range=[0.02,0.5],
                    threshold_norm=None,
                    fit_contrast_range=[200, 3000],
+                   N_source_min=500,
                    x_on_y=False,
                    dist_mask_min=100,
                    atlas_dir='./',
@@ -82,6 +83,9 @@ def eval_halo_pipe(field,
         The value is interpolated from 1D linear model.
     fit_contrast_range: [float , float], optional
         Range of contrast for fitting 1D linear model.
+    N_source_min: int, default 500
+        Minimum number of sources required in the frame.
+        If set as None, use a 2.5% quantile.
     x_on_y: bool, optional
         If True, the linear fitting will be threshold on radii.
     dist_mask_min: int, optional, default None
@@ -132,7 +136,7 @@ def eval_halo_pipe(field,
                                             threshold_range=threshold_range,
                                             threshold_norm=threshold_norm,
                                             pixel_scale=pixel_scale,
-                                            N_source_min=3000,
+                                            N_source_min=N_source_min,
                                             dist_mask_min=dist_mask_min,
                                             plot=plot, verbose=verbose)
     
@@ -221,7 +225,7 @@ def extract_profile_pipe(hdu_list, segm_list,
                          threshold_range=[0.02,0.5],
                          threshold_norm=None,
                          pixel_scale=2.5,
-                         N_source_min=3000,
+                         N_source_min=500,
                          dist_mask_min=None,
                          plot=True, verbose=True):
     
@@ -252,7 +256,7 @@ def extract_profile_pipe(hdu_list, segm_list,
         The value is interpolated from 1D linear model.
     pixel_scale : float
         Pixel scale in arcsec/pixel
-    N_source_min: int, default 3000
+    N_source_min: int, default 500
         Minimum number of sources required in the frame.
         If set None, use a 2.5% quantile.
     dist_mask_min: int, optional, default None
@@ -283,8 +287,14 @@ def extract_profile_pipe(hdu_list, segm_list,
         N_source_G = N_source[filters=='G']
         N_source_R = N_source[filters=='R']
         
-        N_source_G_min = np.quantile(N_source_G, 0.025)
-        N_source_R_min = np.quantile(N_source_R, 0.025)
+        if len(N_source_G)>=5:
+            N_source_G_min = np.quantile(N_source_G, 0.025)
+        else:
+            N_source_G_min = 100
+        if len(N_source_R)>=5:
+            N_source_R_min = np.quantile(N_source_R, 0.025)
+        else:
+            N_source_R_min = 100
         
         # Plot histograms of # of detected sources
         if plot:
@@ -297,7 +307,7 @@ def extract_profile_pipe(hdu_list, segm_list,
             plt.show()
             
     else:
-        N_source_G_min = N_source_R_min = 3000
+        N_source_G_min = N_source_R_min = N_source_min
     
     # Measure profiles
     profiles = {}

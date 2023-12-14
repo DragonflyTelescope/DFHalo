@@ -136,7 +136,7 @@ def compute_radial_profile(img, cen=None, mask=None,
 def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas, 
                               thresholds=np.logspace(-0.5,-3.5,16), 
                               mag_range=[8.5,10.5],
-                              N_source_min=3000,
+                              N_source_min=500,
                               dist_mask_min=None,
                               pixel_scale=2.5,
                               sep=5*u.arcsec):
@@ -158,7 +158,7 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
         Thresholds at x% of the saturation brightness.
     mag_range: list
         Range of magnitude of bright stars for measurement
-    N_source_min: int, default 3000
+    N_source_min: int, default 500
         Minimum number of detected sources required in the frame.
     sep: astropy.units.Quantity, default 5*u.arcsec
         Crossmatch seperation.
