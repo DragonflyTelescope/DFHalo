@@ -26,7 +26,10 @@ def eval_halo_pipe(field,
                    pixel_scale=2.5,
                    do_clustering=True,
                    eps_grid=np.arange(0.1,0.3,0.02),
+                   threshold_range=[0.02,0.5],
+                   threshold_norm=None,
                    fit_contrast_range=[200, 3000],
+                   x_on_y=False,
                    dist_mask_min=100,
                    atlas_dir='./',
                    save_dir='.',
@@ -72,8 +75,15 @@ def eval_halo_pipe(field,
         If True, do clustering on the profiles to identify outliers.
     eps_grid: 1d array, optional
         Input grid of eps for parameter tuning.
+    threshold_range: [float , float], optional
+        Range of threshold for fitting 1D linear model.
+    threshold_norm: float, optional
+        Threshold at which the curves are normalized.
+        The value is interpolated from 1D linear model.
     fit_contrast_range: [float , float], optional
         Range of contrast for fitting 1D linear model.
+    x_on_y: bool, optional
+        If True, the linear fitting will be threshold on radii.
     dist_mask_min: int, optional, default None
         Minimum distance in pix to the field edges mask.
     atlas_dir: str, optional
@@ -112,13 +122,15 @@ def eval_halo_pipe(field,
     # Contrasts from thresholds
     contrasts = 1/thresholds
     
-    # Extract curves of growth
+    # Extract profile
     r_norms_, flags_ = extract_profile_pipe(hdu_list,
                                             segm_list,
                                             catalog_list,
                                             table_atlas,
                                             thresholds=thresholds,
                                             mag_range=mag_range,
+                                            threshold_range=threshold_range,
+                                            threshold_norm=threshold_norm,
                                             pixel_scale=pixel_scale,
                                             N_source_min=3000,
                                             dist_mask_min=dist_mask_min,
@@ -153,7 +165,7 @@ def eval_halo_pipe(field,
     
     # stddev of profiles, values evaluated at normalized radius
     std_profiles = np.nanmedian(mad_std(np.log10(r_norms), axis=1, ignore_nan=True),axis=0)
-    std_y = np.nanmin(std_profiles)
+    std_y = np.nanmedian(std_profiles)
     
     for r_norm in r_norms:
         first_col = r_norm[:,0]
@@ -162,7 +174,7 @@ def eval_halo_pipe(field,
         if len(r_) == 0:
             slope_med, chi2 = 99, 99
         else:
-            slopes, slope_med, chi2 = fit_profile_slopes(np.log10(r_), contrasts, fit_contrast_range, std_y=std_y)
+            slopes, slope_med, chi2 = fit_profile_slopes(np.log10(r_), contrasts, fit_contrast_range, x_on_y=x_on_y, std_y=std_y)
             slopes_list = np.append(slopes_list, slopes)
             
         chi2_list = np.append(chi2_list, chi2)
@@ -206,13 +218,15 @@ def extract_profile_pipe(hdu_list, segm_list,
                          catalog_list, table_atlas, 
                          thresholds=np.logspace(-0.3,-3.,22), 
                          mag_range=[8.5,10.5],
+                         threshold_range=[0.02,0.5],
+                         threshold_norm=None,
                          pixel_scale=2.5,
                          N_source_min=3000,
                          dist_mask_min=None,
                          plot=True, verbose=True):
     
     """ 
-    Extract curves of growth in the list of frames.
+    Extract radii-threshold profile in the list of frames.
     
     A list of corresponding segementation maps, SE catalogs, and
     a crossmatched catalog with ATLAS are required.
@@ -231,6 +245,11 @@ def extract_profile_pipe(hdu_list, segm_list,
         Thresholds at x% of the saturation brightness.
     mag_range: list
         Range of magnitude of bright stars for measurement.
+    threshold_range: [float , float]
+        Range of threshold for fitting 1D linear model.
+    threshold_norm: float
+        Threshold at which the curves are normalized.
+        The value is interpolated from 1D linear model.
     pixel_scale : float
         Pixel scale in arcsec/pixel
     N_source_min: int, default 3000
@@ -246,7 +265,7 @@ def extract_profile_pipe(hdu_list, segm_list,
     Returns
     -------
     r_norms: 3d np.array
-        Curves of Growth (axis 0: frame, axis 1: star, axis 2: radius)
+        Radii-threshold profile (axis 0: frame, axis 1: star, axis 2: radius)
     flags: 1d n.array
         1: Good  0: Bad
     
@@ -307,8 +326,8 @@ def extract_profile_pipe(hdu_list, segm_list,
 
                 # Normalize profiles by 1D intercepts at threshold_norm
                 r_norm = normalize_profiles(r_profiles, thresholds,
-                                            threshold_range=[0.005,0.2],
-                                            threshold_norm=0.5)
+                                            threshold_range=threshold_range,
+                                            threshold_norm=threshold_norm)
             except IndexError:
                 print(f'{hdu_path} failed in profile extraction!')
                 r_norm = None

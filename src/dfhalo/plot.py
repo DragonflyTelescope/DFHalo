@@ -1,8 +1,87 @@
 import os
 import numpy as np
+
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from copy import copy, deepcopy
+
+import photutils
+from packaging import version
+if version.parse(photutils.__version__) < version.parse("1.2"):
+    rand_state = "random_state"
+else:
+    rand_state = "seed"
+    
 from astropy.stats import mad_std
 
+def colorbar(mappable, pad=0.2, size="5%", loc="right",
+         ticks_rot=None, ticks_size=12, color_nan='gray', **args):
+    """ Customized colorbar """
+    ax = mappable.axes
+    fig = ax.figure
+    divider = make_axes_locatable(ax)
+
+    if loc=="bottom":
+        orent = "horizontal"
+        pad = 1.5*pad
+        rot = 60 if ticks_rot is None else ticks_rot
+    else:
+        orent = "vertical"
+        rot = 0 if ticks_rot is None else ticks_rot
+
+    cax = divider.append_axes(loc, size=size, pad=pad)
+
+    cb = fig.colorbar(mappable, cax=cax, orientation=orent, **args)
+    cb.ax.set_xticklabels(cb.ax.get_xticklabels(),rotation=rot)
+    cb.ax.tick_params(labelsize=ticks_size)
+
+    #cmap = cb.mappable.get_cmap()
+    cmap = copy(plt.cm.get_cmap())
+    cmap.set_bad(color=color_nan, alpha=0.3)
+
+    return cb
+
+def display_background(image, back):
+    """ Display fitted background """
+    std = mad_std(image, ignore_nan=True)
+    median = np.nanmedian(image)
+    plot_kws = dict(aspect="auto", cmap="gray",
+                    vmin=median-1*std, vmax=median+3*std)
+    fig, (ax1,ax2,ax3) = plt.subplots(nrows=1,ncols=3,figsize=(14,4))
+    im1 = ax1.imshow(image, **plot_kws)
+    ax1.set_title("image", fontsize=16)
+    colorbar(im1)
+    im2 = ax2.imshow(back, **plot_kws)
+    ax2.set_title("bkg", fontsize=16)
+    colorbar(im2)
+    im3 = ax3.imshow(image - back, **plot_kws)
+    ax3.set_title("bkg subtracted", fontsize=16)
+    colorbar(im3)
+    plt.tight_layout()
+
+def display_source(image, segm, mask, back, random_state=12345):
+    """ Display soruce detection and deblend around the target """
+
+    std = mad_std(image, ignore_nan=True)
+    median = np.nanmedian(image)
+    vmin, vmax = median-1*std, median+3*std
+
+    fig, (ax1,ax2,ax3) = plt.subplots(nrows=1,ncols=3,figsize=(13,4))
+    ax1.imshow(image, vmin=vmin, vmax=vmax)
+    ax1.set_title("target", fontsize=16)
+
+    if type(segm) is np.ndarray:
+        from photutils.segmentation import SegmentationImage
+        segm = SegmentationImage(segm)
+    ax2.imshow(segm, cmap=segm.make_cmap(**{rand_state:random_state}))
+    ax2.set_title("segm", fontsize=16)
+
+    image_ma = image.copy()
+    image_ma[mask] = -1
+    ax3.imshow(image_ma, vmin=vmin, vmax=vmax)
+    ax3.set_title("extracted", fontsize=16)
+    plt.show()
 
 def plot_profiles(r_norms, filters, contrasts, flags=None,
                   save=False, save_dir='.', suffix=''):

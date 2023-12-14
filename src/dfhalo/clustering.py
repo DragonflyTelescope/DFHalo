@@ -20,7 +20,7 @@ def clustering_profiles_optimize(r_norms, filters, contrasts,
     ----------
     
     r_norms: 3d np.array
-        Curves of Growth (axis 0: frame, axis 1: star, axis 2: radius)
+        Radii-threshold profile (axis 0: frame, axis 1: star, axis 2: radius)
     filters: str np.array
         Filters of frames.
     contrasts: 1d array
