@@ -78,11 +78,13 @@ def eval_halo_pipe(field,
         Input grid of eps for parameter tuning.
     threshold_range: [float , float], optional
         Range of threshold for fitting 1D linear model.
+        The fit is used for normalizing profiles among frames.
     threshold_norm: float, optional
         Threshold at which the curves are normalized.
         The value is interpolated from 1D linear model.
     fit_contrast_range: [float , float], optional
         Range of contrast for fitting 1D linear model.
+        The fit is on individual stars per frame for consistency check.
     N_source_min: int, default 500
         Minimum number of sources required in the frame.
         If set as None, use a 2.5% quantile.

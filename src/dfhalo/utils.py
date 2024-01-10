@@ -172,7 +172,8 @@ def make_atlas_catalog(ra_range,
 
 ### Fitting related ###
 def fit_profile_slopes(y_profiles, contrasts,
-                       contrast_range=[200, 2000],
+                       contrast_range=[200, 3000],
+                       min_n_sampling=5,
                        x_on_y=False, std_y=0.016):
     """
     Fit a 1D linear model to the group of radii-threshold profiles.
@@ -186,6 +187,8 @@ def fit_profile_slopes(y_profiles, contrasts,
         Contrasts at 1/x% of the saturation brightness.
     contrast_range: [float , float]
         Range of contrast for fitting 1D linear model.
+    min_n_sampling: int
+        Minimum number of data point to be fitted.
     x_on_y: bool
         If True, the linear fitting will be threshold on radii.
     std_y : float
@@ -209,7 +212,6 @@ def fit_profile_slopes(y_profiles, contrasts,
 
     # Range of fitting
     fit_range = (contrasts>=contrast_range[0])&(contrasts<=contrast_range[1])
-    dof = np.sum(fit_range)-1
     
     # x axis in log
     x_profiles = np.log10(contrasts)
@@ -226,27 +228,34 @@ def fit_profile_slopes(y_profiles, contrasts,
     # Individual profiles
     for j in range(N_star):
         r_ = y_profiles[j]  # first value is saturation radius
-        fit_range = fit_range & (~np.isnan(r_))
+        fit_range_ = fit_range & (~np.isnan(r_))
         
-        # Fit a 1D linear model between threshold_range
-        if x_on_y:
-            slope, intcp =  np.polyfit(r_[fit_range], x_profiles[fit_range], deg=1)
+        dof = np.sum(fit_range_) - 1
+        
+        if dof >= min_n_sampling:
+            
+            # Fit a 1D linear model between threshold_range
+            if x_on_y:
+                slope, intcp =  np.polyfit(r_[fit_range_], x_profiles[fit_range_], deg=1)
+            else:
+                slope, intcp =  np.polyfit(x_profiles[fit_range_], r_[fit_range_], deg=1)
+                
+            # Calculate Chi2
+            poly = np.poly1d([slope, intcp])
+            if x_on_y:
+                chi = ((r_-(x_profiles-intcp)/slope)/std_y)[fit_range_]
+            else:
+                chi = ((r_-poly(x_profiles))/std_y)[fit_range_]
+                
+            chi2_reduced = np.nansum(chi**2)/dof
+            
         else:
-            slope, intcp =  np.polyfit(x_profiles[fit_range], r_[fit_range], deg=1)
+            slope, chi2_reduced = np.nan, np.nan
             
         slopes[j] = slope
+        chi2s[j] = chi2_reduced
         
-        poly = np.poly1d([slope, intcp])
-    
-        # Chi2
-        if x_on_y:
-            chi = ((r_-(x_profiles-intcp)/slope)/std_y)[fit_range]
-        else:
-            chi = ((r_-poly(x_profiles))/std_y)[fit_range]
-            
-        chi2s[j] = np.sum(chi**2)/dof
-        
-    chi2 = np.mean(chi2s)
+    chi2 = np.nanmean(chi2s)
     
     return slopes, slope_med, chi2
 
