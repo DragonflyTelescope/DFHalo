@@ -158,9 +158,9 @@ def plot_profiles(r_norms, filters, contrasts, flags=None,
     
     plt.figure()
     # sigma among frames (averaging stars)
-    plt.plot(contrasts, mad_std(r_norms_med, axis=0), '-', color='k')
-    plt.plot(contrasts, mad_std(r_norms_med[filters=='G'], axis=0), '-', color='lime')
-    plt.plot(contrasts, mad_std(r_norms_med[filters=='R'], axis=0), '-', color='r')
+    plt.plot(contrasts, mad_std(r_norms_med, ignore_nan=True, axis=0), '-', color='k')
+    plt.plot(contrasts, mad_std(r_norms_med[filters=='G'], ignore_nan=True, axis=0), '-', color='lime')
+    plt.plot(contrasts, mad_std(r_norms_med[filters=='R'], ignore_nan=True, axis=0), '-', color='r')
     
     plt.xlabel('Contrasts')
     plt.ylabel('$\sigma$')
