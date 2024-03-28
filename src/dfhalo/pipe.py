@@ -188,7 +188,7 @@ def eval_halo_pipe(field,
     
     # Show histogram of slopes
     if plot:
-        plt.hist(slope_med_list,alpha=0.5)
+        plt.hist(slope_med_list, range=[0.1, 0.9], alpha=0.5)
         plt.xlabel("Slope med")
         plt.show()
     
