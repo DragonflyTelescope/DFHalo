@@ -32,6 +32,7 @@ def eval_halo_pipe(field,
                    N_source_min=500,
                    x_on_y=False,
                    dist_mask_min=100,
+                   ZP_keyword='REFZP',
                    atlas_dir='./',
                    save_dir='.',
                    verbose=True,
@@ -92,6 +93,8 @@ def eval_halo_pipe(field,
         If True, the linear fitting will be threshold on radii.
     dist_mask_min: int, optional, default None
         Minimum distance in pix to the field edges mask.
+    ZP_keyword: str, default 'REFZP'
+        Keyword of zero-point in header.
     atlas_dir: str, optional
         Path to store the ATLAS query file.
     save_dir: str, optional
@@ -140,6 +143,7 @@ def eval_halo_pipe(field,
                                             pixel_scale=pixel_scale,
                                             N_source_min=N_source_min,
                                             dist_mask_min=dist_mask_min,
+                                            ZP_keyword=ZP_keyword,
                                             plot=plot, verbose=verbose)
     
     # Drop profiles bad flags, keep for the brigthest N_star
@@ -188,7 +192,7 @@ def eval_halo_pipe(field,
     
     # Show histogram of slopes
     if plot:
-        plt.hist(slope_med_list,alpha=0.5)
+        plt.hist(slope_med_list, range=[0.1, 0.9], alpha=0.5)
         plt.xlabel("Slope med")
         plt.show()
     
@@ -229,6 +233,7 @@ def extract_profile_pipe(hdu_list, segm_list,
                          pixel_scale=2.5,
                          N_source_min=500,
                          dist_mask_min=None,
+                         ZP_keyword='REFZP',
                          plot=True, verbose=True):
     
     """ 
@@ -263,6 +268,8 @@ def extract_profile_pipe(hdu_list, segm_list,
         If set None, use a 2.5% quantile.
     dist_mask_min: int, optional, default None
         Minimum distance to the field edges mask.
+    ZP_keyword: str, default 'REFZP'
+        Keyword of zero-point in header.
     plot: bool, optional
         Whether to draw diagnostic plots.
     verbose: bool, optional
@@ -334,7 +341,8 @@ def extract_profile_pipe(hdu_list, segm_list,
                                                        mag_range=mag_range,
                                                        dist_mask_min=dist_mask_min,
                                                        pixel_scale=pixel_scale,
-                                                       N_source_min=N_source_min)
+                                                       N_source_min=N_source_min,
+                                                       ZP_keyword=ZP_keyword)
 
                 # Normalize profiles by 1D intercepts at threshold_norm
                 r_norm = normalize_profiles(r_profiles, thresholds,

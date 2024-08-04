@@ -172,7 +172,7 @@ def make_atlas_catalog(ra_range,
 
 ### Fitting related ###
 def fit_profile_slopes(y_profiles, contrasts,
-                       contrast_range=[200, 3000],
+                       contrast_range=[300, 3000],
                        min_n_sampling=5,
                        x_on_y=False, std_y=0.016):
     """

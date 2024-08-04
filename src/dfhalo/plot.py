@@ -146,7 +146,8 @@ def plot_profiles(r_norms, filters, contrasts, flags=None,
     plt.plot(contrasts, np.nanmedian(r_norms_med[filters=='G'], axis=0), '-', ms=5, lw=3, alpha=0.8, label='Median', color='lime', zorder=3)
     plt.plot(contrasts, np.nanmedian(r_norms_med[filters=='R'], axis=0), '-', ms=5, lw=3, alpha=0.8, label='Median', color='r', zorder=3)
 
-    plt.ylim(0.85,23)
+    ymax = np.nanmedian(r_norms_med, axis=0)[-1]
+    plt.ylim(0.85,ymax)
     plt.yscale('log')
     plt.xscale('log')
     plt.xlabel('Contrasts', fontsize=18)
