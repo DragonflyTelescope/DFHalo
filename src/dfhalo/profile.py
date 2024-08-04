@@ -139,7 +139,8 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
                               N_source_min=500,
                               dist_mask_min=None,
                               pixel_scale=2.5,
-                              sep=5*u.arcsec):
+                              sep=5*u.arcsec,
+                              ZP_keyword='REFZP'):
     
     """ 
     Extract single curve of growth.
@@ -180,8 +181,9 @@ def extract_threshold_profile(fn, fn_seg, fn_SEcat, tab_atlas,
     hdu.close()
     
     try:
-        ZP = header['FIDZP']
+        ZP = header[ZP_keyword]
     except KeyError:
+        print(f'{ZP_keyword} not found in fits headers! Try with REFZP')
         ZP = header['REFZP']
         
     wcs = WCS(header)
