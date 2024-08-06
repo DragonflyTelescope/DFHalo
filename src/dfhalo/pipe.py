@@ -24,7 +24,7 @@ def eval_halo_pipe(field,
                    thresholds=np.logspace(-0.3,-3.3,22),
                    mag_range=[8.5,10.5],
                    pixel_scale=2.5,
-                   do_clustering=True,
+                   do_clustering=False,
                    eps_grid=np.arange(0.1,0.3,0.02),
                    threshold_range=[0.02,0.5],
                    threshold_norm=None,
@@ -35,8 +35,8 @@ def eval_halo_pipe(field,
                    ZP_keyword='REFZP',
                    atlas_dir='./',
                    save_dir='.',
-                   verbose=True,
-                   plot=True):
+                   verbose=False,
+                   plot=False):
     
     """
     Evaluate bright stellar halos.
