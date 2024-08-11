@@ -324,7 +324,7 @@ def extract_profile_pipe(hdu_list, segm_list,
     if verbose:
         print("Remove sources < {:d} pixel to the edges".format(dist_mask_min))
     
-    for idx, (filt, hdu_path, segm_path, catalog_path) in tqdm(enumerate(zip(filters, hdu_list, segm_list, catalog_list)), desc='measuring profiles'):
+    for idx, (filt, hdu_path, segm_path, catalog_path) in tqdm(enumerate(zip(filters, hdu_list, segm_list, catalog_list)), desc='measuring profiles', total=len(catalog_list)):
         name = os.path.basename(hdu_path).split('_light')[0]
         
         if filt=='G':
