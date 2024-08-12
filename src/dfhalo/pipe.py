@@ -24,7 +24,7 @@ def eval_halo_pipe(field,
                    thresholds=np.logspace(-0.3,-3.3,22),
                    mag_range=[8.5,10.5],
                    pixel_scale=2.5,
-                   do_clustering=True,
+                   do_clustering=False,
                    eps_grid=np.arange(0.1,0.3,0.02),
                    threshold_range=[0.02,0.5],
                    threshold_norm=None,
@@ -35,8 +35,8 @@ def eval_halo_pipe(field,
                    ZP_keyword='REFZP',
                    atlas_dir='./',
                    save_dir='.',
-                   verbose=True,
-                   plot=True):
+                   verbose=False,
+                   plot=False):
     
     """
     Evaluate bright stellar halos.
@@ -324,7 +324,7 @@ def extract_profile_pipe(hdu_list, segm_list,
     if verbose:
         print("Remove sources < {:d} pixel to the edges".format(dist_mask_min))
     
-    for idx, (filt, hdu_path, segm_path, catalog_path) in tqdm(enumerate(zip(filters, hdu_list, segm_list, catalog_list))):
+    for idx, (filt, hdu_path, segm_path, catalog_path) in tqdm(enumerate(zip(filters, hdu_list, segm_list, catalog_list)), desc='measuring profiles', total=len(catalog_list)):
         name = os.path.basename(hdu_path).split('_light')[0]
         
         if filt=='G':
