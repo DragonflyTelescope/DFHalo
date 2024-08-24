@@ -34,7 +34,7 @@ def eval_halo_pipe(field,
                    dist_mask_min=100,
                    ZP_keyword='REFZP',
                    atlas_dir='./',
-                   save_dir='.',
+                   save_dir=None,
                    verbose=False,
                    plot=False):
     
