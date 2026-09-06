@@ -34,7 +34,7 @@ def eval_halo_pipe(field,
                    dist_mask_min=100,
                    ZP_keyword='REFZP',
                    atlas_dir='./',
-                   save_dir='.',
+                   save_dir=None,
                    verbose=False,
                    plot=False):
     
@@ -385,7 +385,7 @@ def extract_profile_pipe(hdu_list, segm_list,
             if N_fill>0:
                 r_norm = np.vstack([r_norm, np.nan * np.zeros((N_fill, len(thresholds)+1))])
 
-        r_norms = np.vstack([r_norms, [r_norm]]) if idx>0 else [r_norm]
+        r_norms = np.vstack([r_norms, [r_norm]]) if idx > 0 else np.array([r_norm])
         flags = np.append(flags, flag)
         
     return r_norms, flags
