@@ -583,7 +583,7 @@ wheels = [
 [[package]]
 name = "dfhalo"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "astropy", version = "4.3.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.8'" },
     { name = "astropy", version = "5.2.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
@@ -629,7 +629,7 @@ requires-dist = [
     { name = "photutils", specifier = ">=0.7.2" },
     { name = "scikit-learn", specifier = ">=0.24.2" },
     { name = "scipy", specifier = ">=1.6.0" },
-    { name = "tqdm", specifier = ">=4.68.2" },
+    { name = "tqdm", specifier = ">=4.65" },
 ]
 
 [[package]]
